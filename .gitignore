@@ -1,0 +1,41 @@
+# Backend - Maven
+backend/target/
+backend/.idea/
+backend/*.iml
+
+# Frontend - Node
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+
+# IDE
+*.swp
+*.swo
+*~
+.DS_Store
+.vscode/
+.idea/
+
+# Environment variables
+.env
+.env.local
+
+# OS
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Misc
+.gradle/
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
