@@ -1,4 +1,4 @@
-package com.smartcampus.model;
+package com.smartcampus.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
@@ -7,36 +7,37 @@ import lombok.AllArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "resources")
+@Table(name = "users")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Resource {
+public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(unique = true, nullable = false)
+    private String email;
+
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false)
-    private String type; // e.g., LECTURE_HALL, LAB, MEETING_ROOM, EQUIPMENT
-
-    @Column(nullable = false)
-    private String location;
-
-    private Integer capacity;
+    private String picture;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ResourceStatus status; // ACTIVE, OUT_OF_SERVICE
+    private UserRole role; // USER, ADMIN, TECHNICIAN
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
+
+    // OAuth2 fields
+    private String oauthProvider; // e.g., "google"
+    private String oauthId;
 
     @PrePersist
     public void prePersist() {
@@ -49,7 +50,7 @@ public class Resource {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public enum ResourceStatus {
-        ACTIVE, OUT_OF_SERVICE
+    public enum UserRole {
+        USER, ADMIN, TECHNICIAN, MANAGER
     }
 }
