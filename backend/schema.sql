@@ -1,6 +1,10 @@
 -- Smart Campus Database Schema
--- Run this script to create all tables
+-- Run this script to create the database and all tables
 
+-- Create database if it doesn't exist
+CREATE DATABASE IF NOT EXISTS smart_campus;
+
+-- Use the database
 USE smart_campus;
 
 -- Users table
