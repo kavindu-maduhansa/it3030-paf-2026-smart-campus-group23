@@ -1,12 +1,13 @@
 import { useState } from 'react'
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
 import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import heroImg from './assets/hero.png'
 import './App.css'
+import TicketList from './components/tickets/TicketList'
+import TicketForm from './components/tickets/TicketForm'
 
-function App() {
-  const [count, setCount] = useState(0)
-
+function Home({ count, setCount }: { count: number, setCount: React.Dispatch<React.SetStateAction<number>> }) {
   return (
     <>
       <section id="center">
@@ -27,6 +28,10 @@ function App() {
         >
           Count is {count}
         </button>
+
+        <Link to="/tickets" className="btn btn-primary" style={{ textDecoration: 'none', background: '#1a73e8', padding: '12px 24px' }}>
+          Go to Incident Management
+        </Link>
       </section>
 
       <div className="ticks"></div>
@@ -96,25 +101,27 @@ function App() {
                 X.com
               </a>
             </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
           </ul>
         </div>
       </section>
-
       <div className="ticks"></div>
       <section id="spacer"></section>
     </>
+  );
+}
+
+function App() {
+  const [count, setCount] = useState(0)
+
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home count={count} setCount={setCount} />} />
+        <Route path="/tickets" element={<TicketList />} />
+        <Route path="/tickets/new" element={<TicketForm />} />
+        <Route path="/tickets/:id" element={<TicketForm />} /> {/* Simple CRUD reuse for now */}
+      </Routes>
+    </Router>
   )
 }
 
