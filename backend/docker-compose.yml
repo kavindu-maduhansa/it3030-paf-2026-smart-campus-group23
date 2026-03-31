@@ -1,3 +1,8 @@
+# Requires Docker Desktop (or Docker Engine) with the Compose plugin.
+# From this folder (backend\):  docker compose up -d
+# Legacy "docker-compose" is not installed by default; use "docker compose" (space).
+# If "docker" is not recognized, install Docker Desktop and restart the terminal.
+#
 version: '3.8'
 
 services:
