@@ -1,6 +1,8 @@
 package com.smartcampus.dto;
 
+import com.smartcampus.model.Resource;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 public class ResourceRequestDTO {
@@ -17,8 +19,8 @@ public class ResourceRequestDTO {
     @NotBlank
     private String location;
 
-    @NotBlank
-    private String status;
+    @NotNull
+    private Resource.ResourceStatus status;
 
     public String getName() {
         return name;
@@ -52,11 +54,11 @@ public class ResourceRequestDTO {
         this.location = location;
     }
 
-    public String getStatus() {
+    public Resource.ResourceStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(Resource.ResourceStatus status) {
         this.status = status;
     }
 }

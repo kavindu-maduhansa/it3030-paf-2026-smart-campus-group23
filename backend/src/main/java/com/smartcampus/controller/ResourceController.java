@@ -3,6 +3,7 @@ package com.smartcampus.controller;
 import com.smartcampus.model.Resource;
 import com.smartcampus.service.ResourceService;
 import com.smartcampus.dto.ResourceDTO;
+import com.smartcampus.dto.ResourceRequestDTO;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -11,19 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * MODULE A: Resource Controller
- * REST endpoints for facility/asset management
- * 
- * Implemented endpoints (4 required):
- * - GET    /api/resources              (Member 1)
- * - GET    /api/resources/{id}         (Member 1)
- * - POST   /api/resources              (Member 1)
- * - PUT    /api/resources/{id}         (Member 1)
- * - DELETE /api/resources/{id}         (Member 1)
- * - GET    /api/resources/search       (Member 1)
- * - GET    /api/resources/type/{type}  (Member 1)
- */
+
 @RestController
 @RequestMapping("/api/resources")
 public class ResourceController {
@@ -56,7 +45,14 @@ public class ResourceController {
      * HTTP: 201 CREATED, 400 BAD REQUEST
      */
     @PostMapping
-    public ResponseEntity<Resource> createResource(@Valid @RequestBody Resource resource) {
+    public ResponseEntity<Resource> createResource(@Valid @RequestBody ResourceRequestDTO request) {
+        Resource resource = new Resource();
+        resource.setName(request.getName());
+        resource.setType(request.getType());
+        resource.setCapacity(request.getCapacity());
+        resource.setLocation(request.getLocation());
+        resource.setStatus(request.getStatus());
+        
         Resource created = resourceService.createResource(resource);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
