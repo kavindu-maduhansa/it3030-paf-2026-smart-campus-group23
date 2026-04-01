@@ -183,6 +183,25 @@ POST   /api/auth/logout            # Logout
 
 **Schema:** `backend/schema.sql` (auto-initialized with docker-compose)
 
+**Migration Source of Truth:** `backend/src/main/resources/db/migration`
+
+Flyway now manages schema changes automatically at backend startup.
+Each database change must be committed as a new versioned SQL file.
+
+Naming convention:
+- `V1__initial_schema.sql`
+- `V2__add_resource_category.sql`
+
+Team workflow:
+1. Pull latest `main`
+2. Start backend
+3. Flyway applies pending migrations in order
+
+Notes:
+- Do not edit old migration files after they are merged
+- Create a new migration file for every schema change
+- Existing databases are baselined automatically (`spring.flyway.baseline-on-migrate=true`)
+
 **Tables:**
 - users (OAuth + roles)
 - resources (facilities)
