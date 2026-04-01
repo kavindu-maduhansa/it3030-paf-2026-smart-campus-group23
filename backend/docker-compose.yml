@@ -1,3 +1,8 @@
+# Requires Docker Desktop (or Docker Engine) with the Compose plugin.
+# From this folder (backend\):  docker compose up -d
+# Legacy "docker-compose" is not installed by default; use "docker compose" (space).
+# If "docker" is not recognized, install Docker Desktop and restart the terminal.
+#
 version: '3.8'
 
 services:
@@ -7,12 +12,10 @@ services:
     container_name: smart-campus-db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: smart_campus
-      MYSQL_USER: ${DB_USERNAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
@@ -36,11 +39,11 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       - DB_URL=jdbc:mysql://mysql:3306/smart_campus
-      - DB_USERNAME=${DB_USERNAME}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - JWT_SECRET=${JWT_SECRET}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+      - JWT_SECRET=aVeryLongSecretKeyThatIsAtLeast32CharactersLongToSatisfyJwtReqs
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-placeholder}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-placeholder}
       - CORS_ORIGINS=${CORS_ORIGINS}
     volumes:
       - ./uploads:/app/uploads
