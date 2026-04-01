@@ -34,18 +34,15 @@ jobs:
         distribution: 'temurin'
         cache: maven
     
-    - name: Give Maven wrapper execute permission
-      run: chmod +x backend/mvnw
-    
     - name: Build with Maven
       run: |
         cd backend
-        ./mvnw clean package -DskipTests
+        mvn clean package -DskipTests
     
     - name: Run Backend Tests
       run: |
         cd backend
-        ./mvnw test
+        mvn test
 
   frontend-build:
     runs-on: ubuntu-latest
