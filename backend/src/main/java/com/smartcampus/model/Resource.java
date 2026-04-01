@@ -1,6 +1,8 @@
 package com.smartcampus.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -17,15 +19,19 @@ public class Resource {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Resource name is required")
     @Column(nullable = false)
     private String name;
 
+    @NotBlank(message = "Resource type is required")
     @Column(nullable = false)
     private String type; // e.g., LECTURE_HALL, LAB, MEETING_ROOM, EQUIPMENT
 
+    @NotBlank(message = "Resource location is required")
     @Column(nullable = false)
     private String location;
 
+    @PositiveOrZero(message = "Capacity must be zero or positive")
     private Integer capacity;
 
     @Enumerated(EnumType.STRING)

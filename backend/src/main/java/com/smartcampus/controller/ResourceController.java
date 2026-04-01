@@ -3,6 +3,7 @@ package com.smartcampus.controller;
 import com.smartcampus.model.Resource;
 import com.smartcampus.service.ResourceService;
 import com.smartcampus.dto.ResourceDTO;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -55,7 +56,7 @@ public class ResourceController {
      * HTTP: 201 CREATED, 400 BAD REQUEST
      */
     @PostMapping
-    public ResponseEntity<Resource> createResource(@RequestBody Resource resource) {
+    public ResponseEntity<Resource> createResource(@Valid @RequestBody Resource resource) {
         Resource created = resourceService.createResource(resource);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -67,7 +68,7 @@ public class ResourceController {
     @PutMapping("/{id}")
     public ResponseEntity<Resource> updateResource(
             @PathVariable Long id,
-            @RequestBody Resource resourceDetails) {
+            @Valid @RequestBody Resource resourceDetails) {
         Resource updated = resourceService.updateResource(id, resourceDetails);
         return ResponseEntity.ok(updated);
     }

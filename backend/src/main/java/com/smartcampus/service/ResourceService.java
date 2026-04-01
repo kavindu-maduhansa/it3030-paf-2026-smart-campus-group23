@@ -18,6 +18,11 @@ public class ResourceService {
     @Autowired
     private ResourceRepository resourceRepository;
 
+    // improve this service to follow best practices
+    // throw proper exceptions if resource is not found
+    // updateResource should first find the resource then update fields
+    // deleteResource should check if resource exists before deleting
+
     /**
      * Get all resources
      */
@@ -65,16 +70,23 @@ public class ResourceService {
      * Update resource
      */
     public Resource updateResource(Long id, Resource resourceDetails) {
-        Resource resource = getResourceById(id);
-        // TODO: Update fields
-        return resourceRepository.save(resource);
+        Resource existing = getResourceById(id);
+        
+        existing.setName(resourceDetails.getName());
+        existing.setType(resourceDetails.getType());
+        existing.setCapacity(resourceDetails.getCapacity());
+        existing.setLocation(resourceDetails.getLocation());
+        existing.setStatus(resourceDetails.getStatus());
+        
+        return resourceRepository.save(existing);
     }
 
     /**
      * Delete resource
      */
     public void deleteResource(Long id) {
-        resourceRepository.deleteById(id);
+        Resource existing = getResourceById(id);
+        resourceRepository.delete(existing);
     }
 
     /**
