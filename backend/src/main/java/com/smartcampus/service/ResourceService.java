@@ -12,6 +12,7 @@ import java.util.List;
 /**
  * MODULE A: Resource Service
  * Handles business logic for facility/asset management
+ * Implements search, filtering, and CRUD operations
  */
 @Service
 @Transactional
@@ -19,11 +20,6 @@ public class ResourceService {
 
     @Autowired
     private ResourceRepository resourceRepository;
-
-    // improve this service to follow best practices
-    // throw proper exceptions if resource is not found
-    // updateResource should first find the resource then update fields
-    // deleteResource should check if resource exists before deleting
 
     /**
      * Get all resources
@@ -34,6 +30,7 @@ public class ResourceService {
 
     /**
      * Get resource by ID
+     * Throws exception if not found
      */
     public Resource getResourceById(Long id) {
         return resourceRepository.findById(id)
@@ -55,10 +52,38 @@ public class ResourceService {
     }
 
     /**
-     * Search resources by name/location (full-text search)
+     * Filter resources by status
+     */
+    public List<Resource> getResourcesByStatus(Resource.ResourceStatus status) {
+        return resourceRepository.findByStatus(status);
+    }
+
+    /**
+     * Filter resources by minimum capacity (active only)
+     */
+    public List<Resource> getResourcesByCapacity(Integer minCapacity) {
+        return resourceRepository.findByCapacityGreaterThanEqualAndStatus(minCapacity, Resource.ResourceStatus.ACTIVE);
+    }
+
+    /**
+     * Advanced filtering: type, location, and status
+     */
+    public List<Resource> filterResources(String type, String location, Resource.ResourceStatus status) {
+        return resourceRepository.findByTypeAndLocationAndStatus(type, location, status);
+    }
+
+    /**
+     * Search resources by name/location/description (full-text search)
      */
     public List<Resource> searchResources(String query) {
         return resourceRepository.searchResources(query);
+    }
+
+    /**
+     * Find available resources by type and capacity
+     */
+    public List<Resource> findAvailableResources(String type, Integer capacity) {
+        return resourceRepository.findAvailableByTypeAndCapacity(type, capacity);
     }
 
     /**
@@ -69,22 +94,27 @@ public class ResourceService {
     }
 
     /**
-     * Update resource
+     * Update existing resource
+     * Throws exception if resource not found
      */
     public Resource updateResource(Long id, Resource resourceDetails) {
         Resource existing = getResourceById(id);
         
         existing.setName(resourceDetails.getName());
+        existing.setDescription(resourceDetails.getDescription());
         existing.setType(resourceDetails.getType());
         existing.setCapacity(resourceDetails.getCapacity());
         existing.setLocation(resourceDetails.getLocation());
         existing.setStatus(resourceDetails.getStatus());
+        existing.setAvailabilityStart(resourceDetails.getAvailabilityStart());
+        existing.setAvailabilityEnd(resourceDetails.getAvailabilityEnd());
         
         return resourceRepository.save(existing);
     }
 
     /**
      * Delete resource
+     * Throws exception if resource not found
      */
     public void deleteResource(Long id) {
         Resource existing = getResourceById(id);
@@ -92,9 +122,16 @@ public class ResourceService {
     }
 
     /**
-     * Find available resources by type and capacity
+     * Get count of resources by type
      */
-    public List<Resource> findAvailableResources(String type, Integer capacity) {
-        return resourceRepository.findAvailableByTypeAndCapacity(type, capacity);
+    public Long countResourcesByType(String type) {
+        return resourceRepository.countByType(type);
+    }
+
+    /**
+     * Get count of active resources
+     */
+    public Long countActiveResources() {
+        return resourceRepository.countByStatus(Resource.ResourceStatus.ACTIVE);
     }
 }

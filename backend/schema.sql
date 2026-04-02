@@ -145,8 +145,8 @@ INSERT INTO users (email, name, role, oauth_provider) VALUES
 ('john.doe@smartcampus.edu', 'John Doe', 'USER', 'google'),
 ('tech@smartcampus.edu', 'Tech Support', 'TECHNICIAN', 'google');
 
-INSERT INTO resources (name, description, type, capacity, location, status, availability_start, availability_end, created_by) VALUES
-('Lecture Hall A', 'Main lecture hall with projector', 'LECTURE_HALL', 100, 'Building A, Floor 1', 'ACTIVE', '08:00:00', '18:00:00', 1),
-('Computer Lab 1', 'Lab with 30 workstations', 'LAB', 30, 'Building B, Floor 2', 'ACTIVE', '08:00:00', '20:00:00', 1),
-('Meeting Room 101', 'Small meeting room', 'MEETING_ROOM', 10, 'Building A, Floor 2', 'ACTIVE', '08:00:00', '17:00:00', 1),
-('Projector Pro X1', 'High-end projector', 'PROJECTOR', NULL, 'Equipment Room', 'ACTIVE', '08:00:00', '17:00:00', 1);
+INSERT INTO resources (name, description, type, capacity, location, status, availability_start, availability_end, created_by, created_at) VALUES
+('Lecture Hall A', 'Main lecture hall with projector', 'LECTURE_HALL', 100, 'Building A, Floor 1', 'ACTIVE', '08:00:00', '18:00:00', 1, CURRENT_TIMESTAMP),
+('Computer Lab 1', 'Lab with 30 workstations', 'LAB', 30, 'Building B, Floor 2', 'ACTIVE', '08:00:00', '20:00:00', 1, CURRENT_TIMESTAMP),
+('Meeting Room 101', 'Small meeting room', 'MEETING_ROOM', 10, 'Building A, Floor 2', 'ACTIVE', '08:00:00', '17:00:00', 1, CURRENT_TIMESTAMP),
+('Projector Pro X1', 'High-end projector', 'PROJECTOR', NULL, 'Equipment Room', 'ACTIVE', '08:00:00', '17:00:00', 1, CURRENT_TIMESTAMP);

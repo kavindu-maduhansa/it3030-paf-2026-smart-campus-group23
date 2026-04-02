@@ -4,23 +4,34 @@ import com.smartcampus.model.Resource;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import java.time.LocalTime;
 
+/**
+ * DTO for Resource creation and update requests
+ * Includes validation annotations for input validation
+ */
 public class ResourceRequestDTO {
 
-    @NotBlank
+    @NotBlank(message = "Resource name is required")
     private String name;
 
-    @NotBlank
+    private String description;
+
+    @NotBlank(message = "Resource type is required")
     private String type;
 
-    @Positive
+    @Positive(message = "Capacity must be positive")
     private int capacity;
 
-    @NotBlank
+    @NotBlank(message = "Resource location is required")
     private String location;
 
-    @NotNull
+    @NotNull(message = "Resource status is required")
     private Resource.ResourceStatus status;
+
+    private LocalTime availabilityStart;
+
+    private LocalTime availabilityEnd;
 
     public String getName() {
         return name;
@@ -28,6 +39,14 @@ public class ResourceRequestDTO {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public String getType() {
@@ -60,5 +79,21 @@ public class ResourceRequestDTO {
 
     public void setStatus(Resource.ResourceStatus status) {
         this.status = status;
+    }
+
+    public LocalTime getAvailabilityStart() {
+        return availabilityStart;
+    }
+
+    public void setAvailabilityStart(LocalTime availabilityStart) {
+        this.availabilityStart = availabilityStart;
+    }
+
+    public LocalTime getAvailabilityEnd() {
+        return availabilityEnd;
+    }
+
+    public void setAvailabilityEnd(LocalTime availabilityEnd) {
+        this.availabilityEnd = availabilityEnd;
     }
 }
