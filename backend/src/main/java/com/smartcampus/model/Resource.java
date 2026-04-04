@@ -42,16 +42,16 @@ public class Resource {
     @Column(nullable = false)
     private ResourceStatus status; // ACTIVE, OUT_OF_SERVICE
 
-    @Column(name = "availability_start")
+    @Column(name = "availability_start", columnDefinition = "TIME")
     private LocalTime availabilityStart;
 
-    @Column(name = "availability_end")
+    @Column(name = "availability_end", columnDefinition = "TIME")
     private LocalTime availabilityEnd;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "DATETIME")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", columnDefinition = "DATETIME")
     private LocalDateTime updatedAt;
 
     @Column(name = "created_by")
