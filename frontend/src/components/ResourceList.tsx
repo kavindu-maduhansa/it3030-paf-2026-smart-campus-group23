@@ -6,11 +6,13 @@
 import { useEffect, useState } from "react";
 import { getResources } from "../services/resourceService";
 import type { Resource } from "../services/resourceService";
+import ResourceSearch from "./ResourceSearch";
 
 const ResourceList = () => {
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     loadResources();
@@ -33,10 +35,15 @@ const ResourceList = () => {
   if (loading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
 
+  const filteredResources = resources.filter((resource) =>
+    resource.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    resource.type.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div>
       <h2>Resources</h2>
-
+      <ResourceSearch onSearch={setSearchTerm} />
       <table>
         <thead>
           <tr>
@@ -47,9 +54,8 @@ const ResourceList = () => {
             <th>Status</th>
           </tr>
         </thead>
-
         <tbody>
-          {resources.map((resource) => (
+          {filteredResources.map((resource) => (
             <tr key={resource.id}>
               <td>{resource.name}</td>
               <td>{resource.type}</td>
