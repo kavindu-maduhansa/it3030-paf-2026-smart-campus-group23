@@ -1,23 +1,20 @@
 -- Smart Campus Database Schema
--- Run this script to create the database and all tables
+-- Run this script to create all tables in your existing database
 
--- Create database if it doesn't exist
-CREATE DATABASE IF NOT EXISTS smart_campus;
-
--- Use the database
-USE smart_campus;
+-- Use your existing database (provided by hosting service)
+USE sql12822235;
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    email VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(191) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
     picture VARCHAR(500),
     role VARCHAR(20) NOT NULL DEFAULT 'USER',
     oauth_provider VARCHAR(50),
     oauth_id VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL,
     INDEX idx_email (email),
     INDEX idx_role (role)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -34,7 +31,7 @@ CREATE TABLE IF NOT EXISTS resources (
     availability_start TIME,
     availability_end TIME,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL,
     created_by BIGINT,
     INDEX idx_type (type),
     INDEX idx_status (status),
@@ -55,9 +52,9 @@ CREATE TABLE IF NOT EXISTS bookings (
     status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
     admin_comment TEXT,
     reviewed_by BIGINT,
-    reviewed_at TIMESTAMP NULL,
+    reviewed_at DATETIME NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL,
     INDEX idx_resource (resource_id),
     INDEX idx_user (user_id),
     INDEX idx_status (status),
@@ -81,10 +78,10 @@ CREATE TABLE IF NOT EXISTS tickets (
     assigned_to BIGINT,
     resolution_notes TEXT,
     contact_details VARCHAR(255),
-    resolved_at TIMESTAMP NULL,
-    closed_at TIMESTAMP NULL,
+    resolved_at DATETIME NULL,
+    closed_at DATETIME NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL,
     INDEX idx_user (user_id),
     INDEX idx_status (status),
     INDEX idx_priority (priority),
@@ -115,7 +112,7 @@ CREATE TABLE IF NOT EXISTS comments (
     user_id BIGINT NOT NULL,
     content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL,
     INDEX idx_ticket (ticket_id),
     INDEX idx_user (user_id),
     FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
