@@ -3,6 +3,8 @@ package com.smartcampus.service;
 import com.smartcampus.model.Resource;
 import com.smartcampus.repository.ResourceRepository;
 import com.smartcampus.exception.ResourceNotFoundException;
+import com.smartcampus.websocket.ResourceEvent;
+import com.smartcampus.websocket.ResourceWebSocketHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -90,7 +92,16 @@ public class ResourceService {
      * Create new resource
      */
     public Resource createResource(Resource resource) {
-        return resourceRepository.save(resource);
+        Resource saved = resourceRepository.save(resource);
+        // Broadcast event to all connected WebSocket clients
+        ResourceEvent event = ResourceEvent.created(
+            saved.getId(),
+            saved.getName(),
+            saved.getType(),
+            saved.getLocation()
+        );
+        ResourceWebSocketHandler.broadcastResourceUpdate(event);
+        return saved;
     }
 
     /**
@@ -109,7 +120,19 @@ public class ResourceService {
         existing.setAvailabilityStart(resourceDetails.getAvailabilityStart());
         existing.setAvailabilityEnd(resourceDetails.getAvailabilityEnd());
         
-        return resourceRepository.save(existing);
+        Resource updated = resourceRepository.save(existing);
+        
+        // Broadcast event to all connected WebSocket clients
+        ResourceEvent event = ResourceEvent.updated(
+            updated.getId(),
+            updated.getName(),
+            updated.getType(),
+            updated.getLocation(),
+            updated.getStatus().toString()
+        );
+        ResourceWebSocketHandler.broadcastResourceUpdate(event);
+        
+        return updated;
     }
 
     /**
@@ -118,7 +141,12 @@ public class ResourceService {
      */
     public void deleteResource(Long id) {
         Resource existing = getResourceById(id);
+        String name = existing.getName();
         resourceRepository.delete(existing);
+        
+        // Broadcast event to all connected WebSocket clients
+        ResourceEvent event = ResourceEvent.deleted(id, name);
+        ResourceWebSocketHandler.broadcastResourceUpdate(event);
     }
 
     /**

@@ -34,6 +34,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable()) // Disable CSRF for API testing
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/**").permitAll() // Allow all API endpoints
+                .requestMatchers("/ws/**").permitAll() // Allow WebSocket connections
                 .anyRequest().authenticated()
             );
         

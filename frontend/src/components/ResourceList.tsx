@@ -2,10 +2,13 @@
 // display them in a table
 // show columns: name, type, capacity, location, status
 // call getResources() when component loads
+// REAL-TIME: Subscribe to WebSocket for live updates
 
 import { useEffect, useState } from "react";
 import { getResources } from "../services/resourceService";
 import type { Resource } from "../services/resourceService";
+import webSocketService from "../services/webSocketService";
+import type { ResourceEvent } from "../services/webSocketService";
 import ResourceSearch from "./ResourceSearch";
 
 const ResourceList = () => {
@@ -15,8 +18,48 @@ const ResourceList = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
+    // Load initial resources
     loadResources();
+
+    // Connect to WebSocket
+    connectWebSocket();
+
+    // Cleanup on unmount
+    return () => {
+      webSocketService.disconnect();
+    };
   }, []);
+
+  const connectWebSocket = async () => {
+    try {
+      await webSocketService.connect();
+
+      // Subscribe to resource events
+      const unsubscribe = webSocketService.subscribe(handleResourceEvent);
+
+      return unsubscribe;
+    } catch (err) {
+      console.error("Failed to connect WebSocket:", err);
+    }
+  };
+
+  const handleResourceEvent = (event: ResourceEvent) => {
+    setResources((prevResources) => {
+      if (event.action === "CREATE") {
+        // Add new resource (reload to get full details)
+        loadResources();
+        return prevResources;
+      } else if (event.action === "UPDATE") {
+        // Update existing resource (reload to get fresh data)
+        loadResources();
+        return prevResources;
+      } else if (event.action === "DELETE") {
+        // Remove deleted resource
+        return prevResources.filter((r) => r.id !== event.resourceId);
+      }
+      return prevResources;
+    });
+  };
 
   const loadResources = async () => {
     try {
@@ -35,9 +78,10 @@ const ResourceList = () => {
   if (loading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
 
-  const filteredResources = resources.filter((resource) =>
-    resource.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    resource.type.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredResources = resources.filter(
+    (resource) =>
+      resource.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      resource.type.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
