@@ -33,6 +33,7 @@ yarn-error.log*
 # Misc
 .gradle/
 *.jar
+!backend/.mvn/wrapper/maven-wrapper.jar
 *.war
 *.nar
 *.ear
