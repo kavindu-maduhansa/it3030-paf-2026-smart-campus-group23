@@ -31,6 +31,15 @@ if (-not $env:JAVA_HOME) {
 }
 
 Set-Location $root
+
+$checkPort = if ($env:PORT) { [int]$env:PORT } else { 8080 }
+$inUse = @(Get-NetTCPConnection -LocalPort $checkPort -State Listen -ErrorAction SilentlyContinue) | Select-Object -First 1
+if ($inUse) {
+    Write-Host "Port $checkPort is already in use (PID $($inUse.OwningProcess)). Stop that process first, e.g.:" -ForegroundColor Yellow
+    Write-Host "  taskkill /PID $($inUse.OwningProcess) /F" -ForegroundColor Yellow
+    Write-Host "Or use another port: `$env:PORT=8081 .\run-backend.ps1" -ForegroundColor Yellow
+}
+
 if ($args.Count -eq 0) {
     & "$root\mvnw.cmd" spring-boot:run
 } else {
