@@ -46,7 +46,7 @@ export default function DashboardPage() {
             <li key={to}>
               <Link
                 to={to}
-                className="block rounded-2xl border border-[#1F2937] bg-[#111827] p-5 transition-all hover:border-[#3B82F6]/40 hover:shadow-[0_0_24px_rgba(59,130,246,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3B82F6]"
+                className="block rounded-2xl border border-[#1F2937] bg-[#111827] p-5 transition-all hover:border-[#3B82F6]/40 hover:shadow-[0_0_24px_rgba(59,130,246,0.12)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3B82F6]"
               >
                 <span className="font-semibold text-white">{label}</span>
                 <span className="mt-1 block text-sm text-[#94A3B8]">{hint}</span>

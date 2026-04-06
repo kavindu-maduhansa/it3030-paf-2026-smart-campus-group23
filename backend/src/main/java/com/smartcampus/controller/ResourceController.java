@@ -2,7 +2,6 @@ package com.smartcampus.controller;
 
 import com.smartcampus.model.Resource;
 import com.smartcampus.service.ResourceService;
-import com.smartcampus.dto.ResourceDTO;
 import com.smartcampus.dto.ResourceRequestDTO;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;

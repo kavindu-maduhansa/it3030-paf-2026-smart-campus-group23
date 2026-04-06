@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { HiMenuAlt3, HiX } from 'react-icons/hi'
+import { useAuth } from '../services/useAuth'
+import { logout } from '../services/authService'
 
 type LayoutProps = {
   children: ReactNode
@@ -18,8 +20,13 @@ function navLinkClass(isActive: boolean) {
 
 export default function Layout({ children }: LayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { isAuthenticated, user } = useAuth()
 
   const closeMobile = () => setMobileOpen(false)
+
+  const handleLogout = async () => {
+    await logout()
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-[#020617] font-sans antialiased">
@@ -87,12 +94,27 @@ export default function Layout({ children }: LayoutProps) {
           </nav>
 
           <div className="hidden items-center gap-3 md:flex">
-            <Link
-              to="/sign-in"
-              className="rounded-lg bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_26px_rgba(59,130,246,0.45)] transition-all duration-200 hover:bg-blue-500 hover:shadow-[0_0_32px_rgba(59,130,246,0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#60A5FA]"
-            >
-              Sign in
-            </Link>
+            {isAuthenticated && user ? (
+              <>
+                <span className="text-sm text-[#94A3B8]">
+                  Welcome, <span className="font-medium text-white">{user.name}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="rounded-lg bg-[#EF4444] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_26px_rgba(239,68,68,0.35)] transition-all duration-200 hover:bg-[#DC2626] hover:shadow-[0_0_32px_rgba(239,68,68,0.45)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F87171]"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/login"
+                className="rounded-lg bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_26px_rgba(59,130,246,0.45)] transition-all duration-200 hover:bg-blue-500 hover:shadow-[0_0_32px_rgba(59,130,246,0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#60A5FA]"
+              >
+                Sign in
+              </Link>
+            )}
           </div>
 
           <button
@@ -165,13 +187,28 @@ export default function Layout({ children }: LayoutProps) {
             >
               Maintenance
             </NavLink>
-            <Link
-              to="/sign-in"
-              onClick={closeMobile}
-              className="mt-2 rounded-lg bg-[#3B82F6] px-4 py-3 text-center text-sm font-semibold text-white shadow-[0_0_22px_rgba(59,130,246,0.4)] transition-colors hover:bg-blue-500"
-            >
-              Sign in
-            </Link>
+            {isAuthenticated && user ? (
+              <div className="mt-4 border-t border-[#1F2937] pt-4">
+                <div className="mb-3 px-4 text-sm text-[#94A3B8]">
+                  Logged in as: <span className="font-medium text-white">{user.name}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full rounded-lg bg-[#EF4444] px-4 py-3 text-center text-sm font-semibold text-white shadow-[0_0_22px_rgba(239,68,68,0.3)] transition-colors hover:bg-[#DC2626]"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                onClick={closeMobile}
+                className="mt-2 rounded-lg bg-[#3B82F6] px-4 py-3 text-center text-sm font-semibold text-white shadow-[0_0_22px_rgba(59,130,246,0.4)] transition-colors hover:bg-blue-500"
+              >
+                Sign in
+              </Link>
+            )}
           </nav>
         </div>
       </header>

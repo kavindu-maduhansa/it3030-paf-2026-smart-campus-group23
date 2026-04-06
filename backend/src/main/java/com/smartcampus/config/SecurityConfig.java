@@ -1,7 +1,10 @@
 package com.smartcampus.config;
 
+import com.smartcampus.service.CustomOAuth2UserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -12,7 +15,11 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final CustomOAuth2UserService customOAuth2UserService;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -31,11 +38,54 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable()) // Disable CSRF for API testing
+            .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/**").permitAll() // Allow all API endpoints
-                .requestMatchers("/ws/**").permitAll() // Allow WebSocket connections
+                // Public endpoints - auth status check, login, and registration
+                .requestMatchers("/api/auth/status", "/api/auth/user", "/api/auth/login", "/api/auth/register", "/api/auth/logout").permitAll()
+                
+                // Development endpoints - for creating test users
+                .requestMatchers("/api/dev/**").permitAll()
+                
+                // Resource endpoints - allow all authenticated users to view, restrict write operations
+                .requestMatchers("/api/resources/**").permitAll()
+                
+                // Admin endpoints - ADMIN only
+                .requestMatchers("/admin/**").hasRole("ADMIN")
+                
+                // Tickets endpoints - ADMIN or TECHNICIAN
+                .requestMatchers("/tickets/**").hasAnyRole("ADMIN", "TECHNICIAN")
+                
+                // Bookings endpoints - STUDENT or LECTURER
+                .requestMatchers("/bookings/**").hasAnyRole("STUDENT", "LECTURER")
+                
+                // WebSocket connections - allow all authenticated
+                .requestMatchers("/ws/**").permitAll()
+                
+                // All other endpoints require authentication
                 .anyRequest().authenticated()
+            )
+            .oauth2Login(oauth2 -> oauth2
+                .userInfoEndpoint(userInfo -> userInfo
+                    .userService(customOAuth2UserService)
+                )
+                .defaultSuccessUrl("http://localhost:5173/dashboard", true)
+                .failureUrl("http://localhost:5173/login?error=true")
+            )
+            .logout(logout -> logout
+                .logoutSuccessUrl("http://localhost:5173")
+                .permitAll()
+            )
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint((request, response, authException) -> {
+                    // Return 401 for API requests instead of redirecting
+                    if (request.getRequestURI().startsWith("/api/")) {
+                        response.setStatus(401);
+                        response.setContentType("application/json");
+                        response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"Authentication required\"}");
+                    } else {
+                        response.sendRedirect("/oauth2/authorization/google");
+                    }
+                })
             );
         
         return http.build();

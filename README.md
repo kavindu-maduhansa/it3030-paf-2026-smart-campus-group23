@@ -234,4 +234,42 @@ See: **[SETUP_WORKFLOW.md](SETUP_WORKFLOW.md)** for:
 
 ---
 
+## 🔧 Troubleshooting
+
+### CORS and Authentication Errors
+
+If you see CORS errors or OAuth redirect issues in the browser console:
+
+1. **Verify Environment Variables:**
+   ```bash
+   # Backend requires valid Google OAuth credentials
+   echo $env:GOOGLE_CLIENT_ID
+   echo $env:GOOGLE_CLIENT_SECRET
+   ```
+
+2. **Check Backend is Running:**
+   - Backend must be at `http://localhost:8080`
+   - Frontend must be at `http://localhost:5173`
+
+3. **Clear Browser Cookies and Cache:**
+   - OAuth sessions may get stuck
+   - Clear site data for `localhost`
+
+4. **Enable Credentials in API Calls:**
+   - All axios requests must include `withCredentials: true`
+   - Already configured in `resourceService.ts`
+
+5. **Common Error Messages:**
+   - `Access to XMLHttpRequest...blocked by CORS` → Backend not running or wrong credentials
+   - `401 Unauthorized` → Not logged in, redirects to `/login`
+   - `WebSocket connection failed` → Normal on first load, auto-reconnects
+
+6. **Authentication Flow:**
+   - Visit `/login` → Click "Sign in with Google"
+   - Redirected to Google OAuth
+   - After success, redirected back to `/dashboard`
+   - Cookies stored for subsequent API calls
+
+---
+
 **Status:** ✅ Setup Complete | 🚀 Ready for Implementation

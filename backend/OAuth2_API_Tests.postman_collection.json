@@ -1,0 +1,375 @@
+{
+  "info": {
+    "name": "Smart Campus - OAuth2 & RBAC Tests",
+    "description": "Test collection for OAuth2 authentication and role-based access control",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Initiate Google OAuth2 Login",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/oauth2/authorization/google",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["oauth2", "authorization", "google"]
+            },
+            "description": "Redirects to Google login page. After successful login, user will be created/loaded and redirected to frontend."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - User Management",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/admin/users",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["admin", "users"]
+            },
+            "description": "Retrieves all users in the system. Requires ADMIN role."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:8080/admin/users",
+                  "protocol": "http",
+                  "host": ["localhost"],
+                  "port": "8080",
+                  "path": ["admin", "users"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "[\n  {\n    \"id\": 1,\n    \"name\": \"John Doe\",\n    \"email\": \"john.doe@example.com\",\n    \"role\": \"STUDENT\",\n    \"provider\": \"google\",\n    \"createdAt\": \"2026-04-06T10:00:00\"\n  },\n  {\n    \"id\": 2,\n    \"name\": \"Jane Admin\",\n    \"email\": \"jane.admin@example.com\",\n    \"role\": \"ADMIN\",\n    \"provider\": \"google\",\n    \"createdAt\": \"2026-04-05T09:30:00\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Update User Role to ADMIN",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/admin/users/1/role",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["admin", "users", "1", "role"]
+            },
+            "description": "Updates the role of user with ID 1 to ADMIN. Requires ADMIN role."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": \"ADMIN\"\n}"
+                },
+                "url": {
+                  "raw": "http://localhost:8080/admin/users/1/role",
+                  "protocol": "http",
+                  "host": ["localhost"],
+                  "port": "8080",
+                  "path": ["admin", "users", "1", "role"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"id\": 1,\n  \"name\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"role\": \"ADMIN\",\n  \"provider\": \"google\",\n  \"createdAt\": \"2026-04-06T10:00:00\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update User Role to TECHNICIAN",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"TECHNICIAN\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/admin/users/2/role",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["admin", "users", "2", "role"]
+            },
+            "description": "Updates the role of user with ID 2 to TECHNICIAN."
+          }
+        },
+        {
+          "name": "Update User Role to LECTURER",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"LECTURER\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/admin/users/3/role",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["admin", "users", "3", "role"]
+            },
+            "description": "Updates the role of user with ID 3 to LECTURER."
+          }
+        },
+        {
+          "name": "Update User Role to STUDENT",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"STUDENT\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/admin/users/4/role",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["admin", "users", "4", "role"]
+            },
+            "description": "Updates the role of user with ID 4 to STUDENT."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Cases",
+      "item": [
+        {
+          "name": "Update Role - User Not Found",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/admin/users/999/role",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["admin", "users", "999", "role"]
+            },
+            "description": "Attempts to update role for non-existent user. Should return 404."
+          },
+          "response": [
+            {
+              "name": "404 Not Found",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": \"ADMIN\"\n}"
+                },
+                "url": {
+                  "raw": "http://localhost:8080/admin/users/999/role",
+                  "protocol": "http",
+                  "host": ["localhost"],
+                  "port": "8080",
+                  "path": ["admin", "users", "999", "role"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"timestamp\": \"2026-04-06T15:10:00\",\n  \"status\": 404,\n  \"error\": \"Not Found\",\n  \"message\": \"User not found with id: 999\",\n  \"path\": \"/admin/users/999/role\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Role - Invalid Role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"INVALID_ROLE\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/admin/users/1/role",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["admin", "users", "1", "role"]
+            },
+            "description": "Attempts to set an invalid role. Should return 400."
+          },
+          "response": [
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": \"INVALID_ROLE\"\n}"
+                },
+                "url": {
+                  "raw": "http://localhost:8080/admin/users/1/role",
+                  "protocol": "http",
+                  "host": ["localhost"],
+                  "port": "8080",
+                  "path": ["admin", "users", "1", "role"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"timestamp\": \"2026-04-06T15:10:00\",\n  \"status\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"Invalid role value\",\n  \"path\": \"/admin/users/1/role\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Access Admin Endpoint as STUDENT",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/admin/users",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["admin", "users"]
+            },
+            "description": "Attempts to access admin endpoint without ADMIN role. Should return 403."
+          },
+          "response": [
+            {
+              "name": "403 Forbidden",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:8080/admin/users",
+                  "protocol": "http",
+                  "host": ["localhost"],
+                  "port": "8080",
+                  "path": ["admin", "users"]
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"timestamp\": \"2026-04-06T15:10:00\",\n  \"status\": 403,\n  \"error\": \"Forbidden\",\n  \"message\": \"Access Denied\",\n  \"path\": \"/admin/users\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

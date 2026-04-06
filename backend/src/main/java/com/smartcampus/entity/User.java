@@ -1,9 +1,11 @@
 package com.smartcampus.entity;
 
+import com.smartcampus.security.Role;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import java.time.LocalDateTime;
 
 @Entity
@@ -11,46 +13,37 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
-    private String email;
-
     @Column(nullable = false)
     private String name;
 
-    private String picture;
+    @Column(unique = true, nullable = false)
+    private String email;
+
+    @Column
+    private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private UserRole role; // USER, ADMIN, TECHNICIAN
+    private Role role;
 
-    @Column(nullable = false, updatable = false, columnDefinition = "DATETIME")
+    @Column(nullable = false)
+    private String provider;
+
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    @Column(nullable = false, columnDefinition = "DATETIME")
-    private LocalDateTime updatedAt;
-
-    // OAuth2 fields
-    private String oauthProvider; // e.g., "google"
-    private String oauthId;
 
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    public enum UserRole {
-        USER, ADMIN, TECHNICIAN, MANAGER
+        if (this.role == null) {
+            this.role = Role.STUDENT;
+        }
     }
 }
