@@ -1,7 +1,7 @@
 // WebSocket service for real-time resource updates
 // Connects to Spring Boot WebSocket endpoint
 
-const WS_URL = "ws://localhost:8080/ws/resources";
+import { getWebSocketResourcesUrl } from "../config/apiBase";
 
 export interface ResourceEvent {
   type: string;
@@ -17,23 +17,43 @@ export interface ResourceEvent {
 
 class WebSocketService {
   private ws: WebSocket | null = null;
-  private url: string = WS_URL;
+  private url: string = getWebSocketResourcesUrl();
   private listeners: ((event: ResourceEvent) => void)[] = [];
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 3000;
+  private isConnecting = false;
+  private shouldReconnect = true;
+  private reconnectTimeout: number | null = null;
 
   /**
    * Connect to WebSocket server
    */
   connect(): Promise<void> {
+    // Don't connect if already connected or connecting
+    if (this.isConnected()) {
+      console.log("✅ WebSocket already connected");
+      return Promise.resolve();
+    }
+
+    if (this.isConnecting) {
+      console.log("⏳ WebSocket connection already in progress");
+      return Promise.resolve();
+    }
+
     return new Promise((resolve, reject) => {
       try {
+        this.isConnecting = true;
+        this.shouldReconnect = true;
+        this.url = getWebSocketResourcesUrl();
+        
+        console.log("🔌 Connecting to WebSocket:", this.url);
         this.ws = new WebSocket(this.url);
 
         this.ws.onopen = () => {
           console.log("✅ WebSocket connected to", this.url);
           this.reconnectAttempts = 0;
+          this.isConnecting = false;
           resolve();
         };
 
@@ -50,15 +70,22 @@ class WebSocketService {
 
         this.ws.onerror = (error) => {
           console.error("❌ WebSocket error:", error);
+          this.isConnecting = false;
           reject(error);
         };
 
         this.ws.onclose = () => {
           console.log("⚠️ WebSocket disconnected");
-          this.attemptReconnect();
+          this.isConnecting = false;
+          this.ws = null;
+          
+          if (this.shouldReconnect) {
+            this.attemptReconnect();
+          }
         };
       } catch (error) {
         console.error("Error connecting to WebSocket:", error);
+        this.isConnecting = false;
         reject(error);
       }
     });
@@ -68,14 +95,26 @@ class WebSocketService {
    * Attempt to reconnect with exponential backoff
    */
   private attemptReconnect(): void {
+    // Clear any existing reconnect timeout
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
+    if (!this.shouldReconnect) {
+      console.log("🚫 Reconnection disabled");
+      return;
+    }
+
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+      const delay = this.reconnectDelay * this.reconnectAttempts;
       console.log(
         `🔄 Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${delay}ms`
       );
 
-      setTimeout(() => {
+      this.reconnectTimeout = setTimeout(() => {
+        this.reconnectTimeout = null;
         this.connect().catch(() => {
           // Continue attempting to reconnect
         });
@@ -116,12 +155,27 @@ class WebSocketService {
    * Disconnect WebSocket
    */
   disconnect(): void {
+    this.shouldReconnect = false;
+    
+    // Clear reconnect timeout
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
     if (this.ws) {
       this.ws.close();
       this.ws = null;
-      this.listeners = [];
-      console.log("WebSocket disconnected");
+      console.log("🔌 WebSocket manually disconnected");
     }
+  }
+
+  /**
+   * Clear all listeners (useful when component unmounts)
+   */
+  clearListeners(): void {
+    this.listeners = [];
+    console.log("🧹 All WebSocket listeners cleared");
   }
 
   /**

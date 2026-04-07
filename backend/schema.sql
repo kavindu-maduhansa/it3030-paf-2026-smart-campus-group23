@@ -7,14 +7,12 @@ USE sql12822235;
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    email VARCHAR(191) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
-    picture VARCHAR(500),
-    role VARCHAR(20) NOT NULL DEFAULT 'USER',
-    oauth_provider VARCHAR(50),
-    oauth_id VARCHAR(255),
+    email VARCHAR(191) UNIQUE NOT NULL,
+    password VARCHAR(255),
+    role VARCHAR(50) NOT NULL DEFAULT 'STUDENT',
+    provider VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NULL,
     INDEX idx_email (email),
     INDEX idx_role (role)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -137,10 +135,12 @@ CREATE TABLE IF NOT EXISTS notifications (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Sample data for testing
-INSERT INTO users (email, name, role, oauth_provider) VALUES
-('admin@smartcampus.edu', 'Admin User', 'ADMIN', 'google'),
-('john.doe@smartcampus.edu', 'John Doe', 'USER', 'google'),
-('tech@smartcampus.edu', 'Tech Support', 'TECHNICIAN', 'google');
+INSERT INTO users (name, email, role, provider) VALUES
+('Admin User', 'admin@smartcampus.edu', 'ADMIN', 'google'),
+('Dr. Sarah Johnson', 'sarah.johnson@smartcampus.edu', 'LECTURER', 'google'),
+('Mike Tech', 'mike.tech@smartcampus.edu', 'TECHNICIAN', 'google'),
+('Alice Student', 'alice.student@smartcampus.edu', 'STUDENT', 'google'),
+('Bob Smith', 'bob.smith@smartcampus.edu', 'STUDENT', 'google');
 
 INSERT INTO resources (name, description, type, capacity, location, status, availability_start, availability_end, created_by, created_at) VALUES
 ('Lecture Hall A', 'Main lecture hall with projector', 'LECTURE_HALL', 100, 'Building A, Floor 1', 'ACTIVE', '08:00:00', '18:00:00', 1, CURRENT_TIMESTAMP),

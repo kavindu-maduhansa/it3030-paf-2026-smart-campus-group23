@@ -1,61 +1,90 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getResources } from '../services/resourceService'
+import { getResources, deleteResource } from '../services/resourceService'
 import type { Resource } from '../services/resourceService'
-import webSocketService from '../services/webSocketService'
 import type { ResourceEvent } from '../services/webSocketService'
 import ResourceSearch from './ResourceSearch'
+import { useAuth } from '../services/useAuth'
+import { useWebSocket } from '../hooks/useWebSocket'
 
 const ResourceList = () => {
+  const { user, loading: authLoading } = useAuth()
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'TECHNICIAN'
   const [resources, setResources] = useState<Resource[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const loadResources = useCallback(async () => {
+    // Don't attempt to load resources if not authenticated
+    if (!user) {
+      console.log('[ResourceList] User not authenticated, skipping resource load')
+      setLoading(false)
+      return
+    }
+    
     try {
+      console.log('[ResourceList] Loading resources for user:', user?.email, 'role:', user?.role, 'authenticated:', !!user)
       setLoading(true)
       const response = await getResources()
+      console.log('[ResourceList] Resources loaded successfully, count:', response.data?.length)
       setResources(response.data)
       setError(null)
-    } catch (err) {
-      setError('Failed to load resources')
-      console.error(err)
+    } catch (err: any) {
+      // Check if it's an authentication error
+      if (err.response?.status === 401) {
+        console.error('[ResourceList] 401 Unauthorized - user needs to login')
+        setError('Please log in to view resources')
+        // Redirect to login
+        window.location.href = '/login'
+      } else {
+        console.error('[ResourceList] Error loading resources:', err.response?.status, err.message, err.response?.data)
+        setError('Failed to load resources')
+        console.error(err)
+      }
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [user])
 
-  const handleResourceEvent = useCallback(
-    (event: ResourceEvent) => {
-      if (event.action === 'DELETE') {
-        setResources((prev) => prev.filter((r) => r.id !== event.resourceId))
-        return
-      }
-      if (event.action === 'CREATE' || event.action === 'UPDATE') {
-        void loadResources()
-      }
-    },
-    [loadResources]
-  )
-
-  const connectWebSocket = useCallback(async () => {
-    try {
-      await webSocketService.connect()
-      webSocketService.subscribe(handleResourceEvent)
-    } catch (err) {
-      console.error('Failed to connect WebSocket:', err)
+  const handleResourceEvent = useCallback((event: ResourceEvent) => {
+    console.log('[ResourceList] WebSocket event received:', event.action, event.resourceId);
+    
+    if (event.action === 'DELETE') {
+      setResources((prev) => prev.filter((r) => r.id !== event.resourceId))
+      return
     }
-  }, [handleResourceEvent])
+    if (event.action === 'CREATE' || event.action === 'UPDATE') {
+      void loadResources()
+    }
+  }, [loadResources])
+
+  // Connect to WebSocket with proper lifecycle management
+  useWebSocket(handleResourceEvent, !authLoading && !!user)
+
+  const handleDelete = async (id: number | undefined) => {
+    if (!id || !window.confirm('Are you sure you want to delete this resource?')) return
+    try {
+      setDeletingId(id)
+      await deleteResource(id)
+      setResources((prev) => prev.filter((r) => r.id !== id))
+    } catch (err) {
+      console.error('Failed to delete resource:', err)
+      alert('Failed to delete resource')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   useEffect(() => {
-    void loadResources()
-    void connectWebSocket()
-    return () => {
-      webSocketService.disconnect()
+    // Wait for auth to complete before loading resources
+    if (!authLoading && user) {
+      console.log('[ResourceList] Loading resources for authenticated user');
+      void loadResources()
     }
-  }, [loadResources, connectWebSocket])
+  }, [authLoading, user, loadResources])
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-24">
         <div
@@ -107,6 +136,17 @@ const ResourceList = () => {
 
       <ResourceSearch onSearch={setSearchTerm} />
 
+      <div className="mb-6 flex items-center justify-between">
+        {isAdmin && (
+          <button
+            className="rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_24px_rgba(59,130,246,0.4)] transition-all hover:bg-blue-500 hover:shadow-[0_0_28px_rgba(59,130,246,0.5)]"
+            onClick={() => alert('Add resource feature coming soon')}
+          >
+            + Add Resource
+          </button>
+        )}
+      </div>
+
       <div className="overflow-hidden rounded-2xl border border-[#1F2937] bg-[#111827] shadow-xl shadow-black/40">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-left text-sm">
@@ -127,12 +167,17 @@ const ResourceList = () => {
                 <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">
                   Status
                 </th>
+                {isAdmin && (
+                  <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">
+                    Actions
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1F2937] text-[#CBD5E1]">
               {filteredResources.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-16 text-center text-[#94A3B8]">
+                  <td colSpan={isAdmin ? 6 : 5} className="px-5 py-16 text-center text-[#94A3B8]">
                     No resources match your search.
                   </td>
                 </tr>
@@ -157,6 +202,25 @@ const ResourceList = () => {
                         {resource.status === 'ACTIVE' ? 'Available' : 'Unavailable'}
                       </span>
                     </td>
+                    {isAdmin && (
+                      <td className="px-5 py-4">
+                        <div className="flex gap-2">
+                          <button
+                            className="rounded-lg bg-[#3B82F6]/20 px-3 py-1.5 text-xs font-medium text-[#3B82F6] transition-all hover:bg-[#3B82F6]/30"
+                            onClick={() => alert('Edit feature coming soon')}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            disabled={deletingId === resource.id}
+                            className="rounded-lg bg-[#EF4444]/20 px-3 py-1.5 text-xs font-medium text-[#F87171] transition-all hover:bg-[#EF4444]/30 disabled:opacity-50"
+                            onClick={() => handleDelete(resource.id)}
+                          >
+                            {deletingId === resource.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
