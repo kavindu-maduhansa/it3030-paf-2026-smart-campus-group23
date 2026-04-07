@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -47,7 +48,9 @@ public class ResourceController {
      * POST: Create new resource with validation
      * HTTP: 201 CREATED, 400 BAD REQUEST
      * Requires: name, type, capacity, location, status
+     * Restricted to: ADMIN, TECHNICIAN
      */
+    @PreAuthorize("hasAnyRole('ADMIN','TECHNICIAN')")
     @PostMapping
     public ResponseEntity<Resource> createResource(@Valid @RequestBody ResourceRequestDTO request) {
         Resource resource = new Resource();
@@ -67,7 +70,9 @@ public class ResourceController {
     /**
      * PUT: Update existing resource with validation
      * HTTP: 200 OK, 400 BAD REQUEST, 404 NOT FOUND
+     * Restricted to: ADMIN, TECHNICIAN
      */
+    @PreAuthorize("hasAnyRole('ADMIN','TECHNICIAN')")
     @PutMapping("/{id}")
     public ResponseEntity<Resource> updateResource(
             @PathVariable Long id,
@@ -89,7 +94,9 @@ public class ResourceController {
     /**
      * DELETE: Delete resource
      * HTTP: 204 NO CONTENT, 404 NOT FOUND
+     * Restricted to: ADMIN, TECHNICIAN
      */
+    @PreAuthorize("hasAnyRole('ADMIN','TECHNICIAN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteResource(@PathVariable Long id) {
         resourceService.deleteResource(id);
