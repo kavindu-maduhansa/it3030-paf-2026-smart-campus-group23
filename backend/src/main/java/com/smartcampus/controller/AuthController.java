@@ -1,8 +1,8 @@
 package com.smartcampus.controller;
 
 import com.smartcampus.dto.LoginRequest;
-import com.smartcampus.dto.LoginResponse;
 import com.smartcampus.dto.RegisterRequest;
+import com.smartcampus.dto.SessionUser;
 import com.smartcampus.entity.User;
 import com.smartcampus.security.Role;
 import com.smartcampus.service.UserService;
@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -63,13 +64,14 @@ public class AuthController {
         // First check for local auth user in session
         HttpSession session = request.getSession(false);
         if (session != null) {
-            User sessionUser = (User) session.getAttribute("user");
+            SessionUser sessionUser = resolveSessionUser(session);
             if (sessionUser != null) {
                 log.info("[Get User] Returning session user: {} with role: {}", sessionUser.getEmail(), sessionUser.getRole());
                 response.put("authenticated", true);
                 response.put("name", sessionUser.getName());
                 response.put("email", sessionUser.getEmail());
-                response.put("role", sessionUser.getRole().name());
+                response.put("role",
+                        sessionUser.getRole() != null ? sessionUser.getRole().name() : Role.STUDENT.name());
                 return ResponseEntity.ok(response);
             }
         }
@@ -96,8 +98,8 @@ public class AuthController {
         response.put("email", principal.getAttribute("email"));
         response.put("picture", principal.getAttribute("picture"));
         response.put("role", role);
-        response.put("attributes", principal.getAttributes());
-        
+        // Do not put principal.getAttributes() — nested provider objects often break Jackson (HTTP 500).
+
         return ResponseEntity.ok(response);
     }
 
@@ -111,24 +113,26 @@ public class AuthController {
             
             // Create session
             HttpSession session = request.getSession(true);
-            session.setAttribute("user", user);
+            session.setAttribute("user", SessionUser.fromEntity(user));
             session.setAttribute("authenticated", true);
             
             log.info("[Login] Session created with ID: {}", session.getId());
-            
-            LoginResponse response = LoginResponse.builder()
-                    .email(user.getEmail())
-                    .name(user.getName())
-                    .role(user.getRole().name())
-                    .message("Login successful")
-                    .build();
-            
-            return ResponseEntity.ok(response);
+
+            // Plain Map avoids Jackson + Lombok @Builder edge cases that can yield HTTP 500 on write
+            return ResponseEntity.ok(authSuccessBody(user, "Login successful"));
         } catch (Exception e) {
-            log.error("[Login] Login failed for email: {}, error: {}", loginRequest.getEmail(), e.getMessage());
+            String emailForLog = "unknown";
+            try {
+                if (loginRequest != null) {
+                    emailForLog = loginRequest.getEmail();
+                }
+            } catch (RuntimeException ignored) {
+                // avoid secondary failures while building error response
+            }
+            log.error("[Login] Login failed for email: {}", emailForLog, e);
             Map<String, String> error = new HashMap<>();
             error.put("error", "Invalid credentials");
-            error.put("message", e.getMessage());
+            error.put("message", e.getMessage() != null ? e.getMessage() : "Invalid email or password");
             return ResponseEntity.status(401).body(error);
         }
     }
@@ -170,17 +174,10 @@ public class AuthController {
             
             // Auto-login after registration
             HttpSession session = request.getSession(true);
-            session.setAttribute("user", user);
+            session.setAttribute("user", SessionUser.fromEntity(user));
             session.setAttribute("authenticated", true);
-            
-            LoginResponse response = LoginResponse.builder()
-                    .email(user.getEmail())
-                    .name(user.getName())
-                    .role(user.getRole().name())
-                    .message("Registration successful")
-                    .build();
-            
-            return ResponseEntity.ok(response);
+
+            return ResponseEntity.ok(authSuccessBody(user, "Registration successful"));
         } catch (IllegalArgumentException e) {
             log.warn("[Register] User already exists: {}", registerRequest.getEmail());
             Map<String, String> error = new HashMap<>();
@@ -206,5 +203,29 @@ public class AuthController {
         Map<String, String> response = new HashMap<>();
         response.put("message", "Logged out successfully");
         return ResponseEntity.ok(response);
+    }
+
+    private static Map<String, Object> authSuccessBody(User user, String message) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("email", Objects.toString(user.getEmail(), ""));
+        body.put("name", Objects.toString(user.getName(), ""));
+        Role role = user.getRole();
+        body.put("role", role != null ? role.name() : Role.STUDENT.name());
+        body.put("message", message);
+        return body;
+    }
+
+    /** Normalize session attribute (supports legacy JPA {@link User} from older sessions). */
+    private static SessionUser resolveSessionUser(HttpSession session) {
+        Object attr = session.getAttribute("user");
+        if (attr instanceof SessionUser su) {
+            return su;
+        }
+        if (attr instanceof User legacy) {
+            SessionUser migrated = SessionUser.fromEntity(legacy);
+            session.setAttribute("user", migrated);
+            return migrated;
+        }
+        return null;
     }
 }

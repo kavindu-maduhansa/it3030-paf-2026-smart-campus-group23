@@ -23,7 +23,8 @@ public class User {
     @Column(nullable = false)
     private String name;
 
-    @Column(unique = true, nullable = false)
+    /** 191: MySQL 5.5 / utf8mb4 unique index max length (767 bytes) */
+    @Column(unique = true, nullable = false, length = 191)
     private String email;
 
     @Column

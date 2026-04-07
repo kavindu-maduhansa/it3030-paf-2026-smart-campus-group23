@@ -1,3 +1,4 @@
+import { getOAuthBaseUrl } from '../config/apiBase'
 import { apiClient } from './axiosConfig'
 
 const API_URL = '/api/auth'
@@ -58,7 +59,7 @@ export const register = async (data: RegisterData): Promise<User> => {
 }
 
 export const loginWithGoogle = () => {
-  window.location.href = 'http://localhost:8080/oauth2/authorization/google'
+  window.location.href = `${getOAuthBaseUrl()}/oauth2/authorization/google`
 }
 
 export const logout = async () => {

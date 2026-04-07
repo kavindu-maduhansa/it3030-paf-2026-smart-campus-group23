@@ -7,7 +7,7 @@ import com.smartcampus.repository.UserRepository;
 import com.smartcampus.security.Role;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public User findOrCreateUser(String email, String name, String provider) {
@@ -46,7 +46,13 @@ public class UserService {
             throw new ResourceNotFoundException("Please use Google Sign-In for this account");
         }
         
-        if (!passwordEncoder.matches(password, user.getPassword())) {
+        try {
+            if (!passwordEncoder.matches(password, user.getPassword())) {
+                throw new ResourceNotFoundException("Invalid email or password");
+            }
+        } catch (IllegalArgumentException ex) {
+            // Corrupt or non-BCrypt hash in DB — treat as bad credentials, not 500
+            log.warn("Password hash invalid for user {}: {}", email, ex.getMessage());
             throw new ResourceNotFoundException("Invalid email or password");
         }
         
