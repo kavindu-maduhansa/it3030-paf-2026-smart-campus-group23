@@ -1,5 +1,6 @@
 package com.smartcampus.config;
 
+import com.smartcampus.security.SessionAuthenticationFilter;
 import com.smartcampus.service.CustomOAuth2UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -8,6 +9,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -20,6 +22,7 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final CustomOAuth2UserService customOAuth2UserService;
+    private final SessionAuthenticationFilter sessionAuthenticationFilter;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -43,6 +46,8 @@ public class SecurityConfig {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
+            // Add session authentication filter before OAuth2 processing
+            .addFilterBefore(sessionAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints - auth status check, login, and registration
                 .requestMatchers("/api/auth/**").permitAll()
@@ -51,7 +56,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/resources/**").permitAll()
                 
                 // Admin endpoints - ADMIN only
-                .requestMatchers("/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 
                 // Tickets endpoints - ADMIN or TECHNICIAN
                 .requestMatchers("/tickets/**").hasAnyRole("ADMIN", "TECHNICIAN")

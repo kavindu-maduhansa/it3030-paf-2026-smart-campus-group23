@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getResources, deleteResource } from '../services/resourceService'
 import type { Resource } from '../services/resourceService'
-import webSocketService from '../services/webSocketService'
 import type { ResourceEvent } from '../services/webSocketService'
 import ResourceSearch from './ResourceSearch'
 import { useAuth } from '../services/useAuth'
+import { useWebSocket } from '../hooks/useWebSocket'
 
 const ResourceList = () => {
   const { user, loading: authLoading } = useAuth()
@@ -47,27 +47,20 @@ const ResourceList = () => {
     }
   }, [user])
 
-  const handleResourceEvent = useCallback(
-    (event: ResourceEvent) => {
-      if (event.action === 'DELETE') {
-        setResources((prev) => prev.filter((r) => r.id !== event.resourceId))
-        return
-      }
-      if (event.action === 'CREATE' || event.action === 'UPDATE') {
-        void loadResources()
-      }
-    },
-    [loadResources]
-  )
-
-  const connectWebSocket = useCallback(async () => {
-    try {
-      await webSocketService.connect()
-      webSocketService.subscribe(handleResourceEvent)
-    } catch (err) {
-      console.error('Failed to connect WebSocket:', err)
+  const handleResourceEvent = useCallback((event: ResourceEvent) => {
+    console.log('[ResourceList] WebSocket event received:', event.action, event.resourceId);
+    
+    if (event.action === 'DELETE') {
+      setResources((prev) => prev.filter((r) => r.id !== event.resourceId))
+      return
     }
-  }, [handleResourceEvent])
+    if (event.action === 'CREATE' || event.action === 'UPDATE') {
+      void loadResources()
+    }
+  }, [loadResources])
+
+  // Connect to WebSocket with proper lifecycle management
+  useWebSocket(handleResourceEvent, !authLoading && !!user)
 
   const handleDelete = async (id: number | undefined) => {
     if (!id || !window.confirm('Are you sure you want to delete this resource?')) return
@@ -85,14 +78,11 @@ const ResourceList = () => {
 
   useEffect(() => {
     // Wait for auth to complete before loading resources
-    if (!authLoading) {
+    if (!authLoading && user) {
+      console.log('[ResourceList] Loading resources for authenticated user');
       void loadResources()
-      void connectWebSocket()
     }
-    return () => {
-      webSocketService.disconnect()
-    }
-  }, [loadResources, connectWebSocket, authLoading])
+  }, [authLoading, user, loadResources])
 
   if (authLoading || loading) {
     return (

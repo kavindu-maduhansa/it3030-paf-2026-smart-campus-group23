@@ -17,9 +17,9 @@ export const apiClient = axios.create({
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
-      console.error('[API] 401 Unauthorized - redirecting to login')
-      window.location.href = '/login'
+    // Log 401 errors but don't auto-redirect - let components handle it
+    if (error.response?.status === 401) {
+      console.error('[API] 401 Unauthorized - authentication required')
     }
     return Promise.reject(error)
   }
