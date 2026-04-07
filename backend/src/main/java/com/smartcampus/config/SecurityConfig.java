@@ -43,9 +43,6 @@ public class SecurityConfig {
                 // Public endpoints - auth status check, login, and registration
                 .requestMatchers("/api/auth/status", "/api/auth/user", "/api/auth/login", "/api/auth/register", "/api/auth/logout").permitAll()
                 
-                // Development endpoints - for creating test users
-                .requestMatchers("/api/dev/**").permitAll()
-                
                 // Resource endpoints - allow all authenticated users to view, restrict write operations
                 .requestMatchers("/api/resources/**").permitAll()
                 
