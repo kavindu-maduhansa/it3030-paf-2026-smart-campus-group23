@@ -1,8 +1,11 @@
 import axios from 'axios'
+import { getApiBaseUrl } from '../config/apiBase'
+
+export const API_BASE_URL = getApiBaseUrl()
 
 // Create a centralized axios instance with consistent configuration
 export const apiClient = axios.create({
-  baseURL: 'http://localhost:8080',
+  baseURL: API_BASE_URL,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

@@ -10,7 +10,11 @@ import AboutPage from './pages/AboutPage'
 import ContactPage from './pages/ContactPage'
 import DashboardPage from './pages/DashboardPage'
 import HomePage from './pages/HomePage'
-import PlaceholderPage from './pages/PlaceholderPage'
+import ProfilePage from './pages/ProfilePage'
+import AdminUsersPage from './pages/AdminUsersPage'
+import SchedulePage from './pages/SchedulePage'
+import BookingsPage from './pages/BookingsPage'
+import MaintenancePage from './pages/MaintenancePage'
 
 function App() {
   return (
@@ -36,6 +40,36 @@ function App() {
               }
             />
             <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <PageShell>
+                    <ProfilePage />
+                  </PageShell>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute>
+                  <PageShell>
+                    <AdminUsersPage />
+                  </PageShell>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/schedule"
+              element={
+                <ProtectedRoute>
+                  <PageShell>
+                    <SchedulePage />
+                  </PageShell>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/resources"
               element={
                 <ProtectedRoute>
@@ -50,10 +84,7 @@ function App() {
               element={
                 <ProtectedRoute>
                   <PageShell>
-                    <PlaceholderPage
-                      title="Bookings"
-                      description="Booking management and approval workflows will appear here."
-                    />
+                    <BookingsPage />
                   </PageShell>
                 </ProtectedRoute>
               }
@@ -63,10 +94,7 @@ function App() {
               element={
                 <ProtectedRoute>
                   <PageShell>
-                    <PlaceholderPage
-                      title="Maintenance"
-                      description="Maintenance tickets and technician communication will appear here."
-                    />
+                    <MaintenancePage />
                   </PageShell>
                 </ProtectedRoute>
               }

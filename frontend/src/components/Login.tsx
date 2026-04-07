@@ -28,7 +28,19 @@ const Login = () => {
       await checkAuth()
       navigate('/dashboard')
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid email or password')
+      const data = err.response?.data as { message?: string; error?: string } | undefined
+      let msg =
+        (typeof data?.message === 'string' && data.message.trim() ? data.message : null) ||
+        (typeof data?.error === 'string' && data.error.trim() ? data.error : null) ||
+        (err.code === 'ERR_NETWORK'
+          ? 'Cannot reach the API. Start the backend and restart Vite so the /api proxy matches your port.'
+          : null) ||
+        'Invalid email or password'
+      if (msg === 'An unexpected error occurred') {
+        msg =
+          'Server error during sign-in. Check the backend terminal log (stack trace). If the account only uses Google, use "Continue with Google" or register with a password.'
+      }
+      setError(msg)
     } finally {
       setIsLoading(false)
     }

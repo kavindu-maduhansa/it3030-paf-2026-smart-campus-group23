@@ -1,7 +1,7 @@
 // WebSocket service for real-time resource updates
 // Connects to Spring Boot WebSocket endpoint
 
-const WS_URL = "ws://localhost:8080/ws/resources";
+import { getWebSocketResourcesUrl } from "../config/apiBase";
 
 export interface ResourceEvent {
   type: string;
@@ -17,7 +17,7 @@ export interface ResourceEvent {
 
 class WebSocketService {
   private ws: WebSocket | null = null;
-  private url: string = WS_URL;
+  private url: string = getWebSocketResourcesUrl();
   private listeners: ((event: ResourceEvent) => void)[] = [];
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
@@ -29,6 +29,7 @@ class WebSocketService {
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
+        this.url = getWebSocketResourcesUrl();
         this.ws = new WebSocket(this.url);
 
         this.ws.onopen = () => {

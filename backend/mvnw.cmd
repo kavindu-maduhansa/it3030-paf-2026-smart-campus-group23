@@ -59,10 +59,32 @@ set ERROR_CODE=0
 @REM ==== START VALIDATION ====
 if not "%JAVA_HOME%" == "" goto OkJHome
 
+@REM If JAVA_HOME is unset, try common Windows JDK locations (local dev)
+if exist "%ProgramFiles%\Java\jdk-17\bin\java.exe" (
+  set "JAVA_HOME=%ProgramFiles%\Java\jdk-17"
+  goto OkJHome
+)
+if exist "%ProgramFiles%\Java\jdk-21\bin\java.exe" (
+  set "JAVA_HOME=%ProgramFiles%\Java\jdk-21"
+  goto OkJHome
+)
+for /d %%J in ("%ProgramFiles%\Eclipse Adoptium\jdk-*") do (
+  if exist "%%~J\bin\java.exe" (
+    set "JAVA_HOME=%%~J"
+    goto OkJHome
+  )
+)
+for /d %%J in ("%ProgramFiles%\Java\jdk-*") do (
+  if exist "%%~J\bin\java.exe" (
+    set "JAVA_HOME=%%~J"
+    goto OkJHome
+  )
+)
+
 echo. >&2
 echo Error: JAVA_HOME not found in your environment. >&2
-echo Please set the JAVA_HOME variable in your environment to match the >&2
-echo location of your Java installation. >&2
+echo Please set JAVA_HOME, or install a JDK under Program Files\Java\jdk-17 >&2
+echo or use: .\run-backend.ps1 >&2
 echo. >&2
 goto error
 

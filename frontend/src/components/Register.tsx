@@ -41,8 +41,19 @@ const Register = () => {
       await checkAuth()
       navigate('/dashboard')
     } catch (err: any) {
-      if (err.response?.data) {
-        setErrors(err.response.data)
+      const data = err.response?.data as Record<string, unknown> | undefined
+      if (data && typeof data.message === 'string' && data.message.trim()) {
+        setErrors({ general: data.message })
+      } else if (data && typeof data === 'object' && !Array.isArray(data)) {
+        const next: Record<string, string> = {}
+        for (const [k, v] of Object.entries(data)) {
+          if (typeof v === 'string') next[k] = v
+        }
+        if (Object.keys(next).length) {
+          setErrors(next)
+        } else {
+          setErrors({ general: 'Registration failed. Please try again.' })
+        }
       } else {
         setErrors({ general: 'Registration failed. Please try again.' })
       }
