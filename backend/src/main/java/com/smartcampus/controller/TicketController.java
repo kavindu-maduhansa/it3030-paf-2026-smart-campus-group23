@@ -31,14 +31,15 @@ public class TicketController {
     private final TicketService ticketService;
     private final UserRepository userRepository;
 
-    @PostMapping
+    @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<TicketResponseDTO> createTicket(
-            @Valid @RequestBody TicketRequestDTO ticketRequestDTO,
+            @Valid @RequestPart("ticket") TicketRequestDTO ticketRequestDTO,
+            @RequestPart(value = "images", required = false) org.springframework.web.multipart.MultipartFile[] images,
             @AuthenticationPrincipal OAuth2User oauth2User,
             HttpServletRequest request) {
         
         User currentUser = resolveUser(oauth2User, request);
-        TicketResponseDTO response = ticketService.createTicket(ticketRequestDTO, currentUser);
+        TicketResponseDTO response = ticketService.createTicket(ticketRequestDTO, currentUser, images);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

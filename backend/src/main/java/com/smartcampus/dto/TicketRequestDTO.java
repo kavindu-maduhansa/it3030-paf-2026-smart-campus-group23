@@ -22,6 +22,7 @@ public class TicketRequestDTO {
     private String title;
 
     @NotBlank(message = "Description is required")
+    @NotNull(message = "Description cannot be null")
     private String description;
 
     @NotBlank(message = "Category is required")

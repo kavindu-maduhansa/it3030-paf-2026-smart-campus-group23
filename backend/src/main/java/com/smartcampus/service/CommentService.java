@@ -26,7 +26,7 @@ public class CommentService {
 
         // Logic to ensure only the comment owner can delete it
         if (!comment.getUser().getId().equals(currentUser.getId())) {
-            log.warn("User {} attempted to delete comment {} owned by user {}", 
+            log.warn("User {} attempted to delete comment {} owned by user {}",
                     currentUser.getId(), id, comment.getUser().getId());
             throw new AccessDeniedException("You are not the owner of this comment");
         }

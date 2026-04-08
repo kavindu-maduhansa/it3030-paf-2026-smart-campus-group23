@@ -6,8 +6,10 @@ import com.smartcampus.entity.User;
 import com.smartcampus.exception.ResourceNotFoundException;
 import com.smartcampus.model.Resource;
 import com.smartcampus.model.Ticket;
+import com.smartcampus.model.Attachment;
 import com.smartcampus.model.Ticket.TicketPriority;
 import com.smartcampus.model.Ticket.TicketStatus;
+import com.smartcampus.repository.AttachmentRepository;
 import com.smartcampus.repository.ResourceRepository;
 import com.smartcampus.repository.TicketRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,11 +28,19 @@ public class TicketService {
 
     private final TicketRepository ticketRepository;
     private final ResourceRepository resourceRepository;
+    private final AttachmentRepository attachmentRepository;
+    private final FileStorageService fileStorageService;
 
     @Transactional
-    public TicketResponseDTO createTicket(TicketRequestDTO dto, User user) {
+    public TicketResponseDTO createTicket(TicketRequestDTO dto, User user, org.springframework.web.multipart.MultipartFile[] images) {
         log.info("Creating new ticket for user: {}", user.getEmail());
         
+        // Day 3: Multi-image validation (Max 3)
+        if (images != null && images.length > 3) {
+            log.warn("User {} attempted to upload {} images (limit 3)", user.getEmail(), images.length);
+            throw new IllegalArgumentException("Maximum 3 image attachments allowed per ticket");
+        }
+
         Resource resource = null;
         if (dto.getResourceId() != null) {
             resource = resourceRepository.findById(dto.getResourceId())
@@ -52,6 +62,25 @@ public class TicketService {
         }
 
         Ticket savedTicket = ticketRepository.save(ticket);
+
+        // Day 3: Handle attachments
+        if (images != null && images.length > 0) {
+            for (org.springframework.web.multipart.MultipartFile image : images) {
+                if (image != null && !image.isEmpty()) {
+                    String fileName = fileStorageService.storeFile(image);
+                    
+                    Attachment attachment = new Attachment();
+                    attachment.setTicket(savedTicket);
+                    attachment.setFileName(image.getOriginalFilename());
+                    attachment.setFilePath(fileName);
+                    attachment.setFileType(image.getContentType());
+                    attachment.setFileSize(image.getSize());
+                    
+                    attachmentRepository.save(attachment);
+                }
+            }
+        }
+
         return convertToResponseDTO(savedTicket);
     }
 
