@@ -12,6 +12,7 @@ import com.smartcampus.model.Ticket.TicketStatus;
 import com.smartcampus.repository.AttachmentRepository;
 import com.smartcampus.repository.ResourceRepository;
 import com.smartcampus.repository.TicketRepository;
+import com.smartcampus.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class TicketService {
     private final ResourceRepository resourceRepository;
     private final AttachmentRepository attachmentRepository;
     private final FileStorageService fileStorageService;
+    private final UserRepository userRepository;
 
     @Transactional
     public TicketResponseDTO createTicket(TicketRequestDTO dto, User user, org.springframework.web.multipart.MultipartFile[] images) {
@@ -104,12 +106,32 @@ public class TicketService {
     }
 
     @Transactional
-    public TicketResponseDTO updateTicketStatus(Long id, TicketStatus status) {
+    public TicketResponseDTO updateTicketStatus(Long id, TicketStatus status, User currentUser) {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + id));
 
-        log.info("Updating ticket {} status from {} to {}", id, ticket.getStatus(), status);
+        log.info("User {} (Role: {}) update status for ticket {} to {}", 
+                currentUser.getEmail(), currentUser.getRole(), id, status);
         
+        // Day 4: Role-based status transition rules
+        if (status == TicketStatus.IN_PROGRESS || status == TicketStatus.RESOLVED) {
+            if (currentUser.getRole() != com.smartcampus.security.Role.TECHNICIAN && 
+                currentUser.getRole() != com.smartcampus.security.Role.ADMIN) {
+                throw new org.springframework.security.access.AccessDeniedException("Only technicians or admins can progress tickets");
+            }
+            
+            // Auto-assign to reporter if they are a technician moving it to IN_PROGRESS
+            if (status == TicketStatus.IN_PROGRESS && ticket.getAssignedTo() == null && 
+                currentUser.getRole() == com.smartcampus.security.Role.TECHNICIAN) {
+                ticket.setAssignedTo(currentUser);
+            }
+        }
+
+        if (status == TicketStatus.CLOSED && currentUser.getRole() != com.smartcampus.security.Role.ADMIN && 
+            !ticket.getUser().getId().equals(currentUser.getId())) {
+            throw new org.springframework.security.access.AccessDeniedException("Only admins or the ticket owner can close a ticket");
+        }
+
         TicketStatus oldStatus = ticket.getStatus();
         ticket.setStatus(status);
 
@@ -119,6 +141,31 @@ public class TicketService {
             ticket.setClosedAt(LocalDateTime.now());
         }
 
+        Ticket updatedTicket = ticketRepository.save(ticket);
+        return convertToResponseDTO(updatedTicket);
+    }
+
+    @Transactional
+    public TicketResponseDTO assignTechnician(Long ticketId, Long technicianId, User currentUser) {
+        if (currentUser.getRole() != com.smartcampus.security.Role.ADMIN && 
+            currentUser.getRole() != com.smartcampus.security.Role.TECHNICIAN) {
+            throw new org.springframework.security.access.AccessDeniedException("Unauthorized to assign technicians");
+        }
+
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + ticketId));
+
+        User technician = userRepository.findById(technicianId)
+                .orElseThrow(() -> new ResourceNotFoundException("Technician not found with id: " + technicianId));
+
+        if (technician.getRole() != com.smartcampus.security.Role.TECHNICIAN && 
+            technician.getRole() != com.smartcampus.security.Role.ADMIN) {
+            throw new IllegalArgumentException("User is not a technician");
+        }
+
+        ticket.setAssignedTo(technician);
+        log.info("Ticket {} assigned to technician {}", ticketId, technician.getEmail());
+        
         Ticket updatedTicket = ticketRepository.save(ticket);
         return convertToResponseDTO(updatedTicket);
     }

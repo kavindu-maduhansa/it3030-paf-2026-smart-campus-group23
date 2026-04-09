@@ -60,9 +60,24 @@ public class TicketController {
     @PatchMapping("/{id}/status")
     public ResponseEntity<TicketResponseDTO> updateTicketStatus(
             @PathVariable Long id,
-            @RequestParam TicketStatus status) {
+            @RequestParam TicketStatus status,
+            @AuthenticationPrincipal OAuth2User oauth2User,
+            HttpServletRequest request) {
         
-        TicketResponseDTO response = ticketService.updateTicketStatus(id, status);
+        User currentUser = resolveUser(oauth2User, request);
+        TicketResponseDTO response = ticketService.updateTicketStatus(id, status, currentUser);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/assign")
+    public ResponseEntity<TicketResponseDTO> assignTechnician(
+            @PathVariable Long id,
+            @RequestParam Long technicianId,
+            @AuthenticationPrincipal OAuth2User oauth2User,
+            HttpServletRequest request) {
+        
+        User currentUser = resolveUser(oauth2User, request);
+        TicketResponseDTO response = ticketService.assignTechnician(id, technicianId, currentUser);
         return ResponseEntity.ok(response);
     }
 
