@@ -13,6 +13,9 @@ export interface Resource {
   capacity?: number
   available?: boolean
   status?: string
+  description?: string
+  availabilityStart?: string
+  availabilityEnd?: string
 }
 
 export const getResources = () => apiClient.get<Resource[]>(API_URL)
