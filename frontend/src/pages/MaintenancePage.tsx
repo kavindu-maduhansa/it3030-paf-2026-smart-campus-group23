@@ -54,14 +54,13 @@ export default function MaintenancePage() {
               >
                 Dashboard
               </Link>
-              <button
-                type="button"
-                disabled
-                className="inline-flex items-center gap-2 rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white opacity-70"
+              <Link
+                to="/maintenance/report"
+                className="inline-flex items-center gap-2 rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 active:scale-95"
               >
                 <HiOutlineWrenchScrewdriver className="h-4 w-4" />
                 New ticket
-              </button>
+              </Link>
             </div>
           }
         />

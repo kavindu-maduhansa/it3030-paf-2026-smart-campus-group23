@@ -79,6 +79,13 @@ export const ROLE_DASHBOARD: Record<CampusRole, RoleDashboardConfig> = {
         Icon: HiOutlinePencilSquare,
         iconClass: 'bg-red-500/15 text-[#EF4444] ring-1 ring-red-500/30',
       },
+      {
+        to: '/maintenance/report',
+        title: 'Report incident',
+        description: 'Notify maintenance about broken equipment or facility issues.',
+        Icon: HiOutlineWrenchScrewdriver,
+        iconClass: 'bg-violet-500/15 text-[#8B5CF6] ring-1 ring-violet-500/30',
+      },
     ],
     accountHint:
       'Summary details for your Smart Campus profile. Update your email and preferences from Settings when available.',
@@ -164,6 +171,13 @@ export const ROLE_DASHBOARD: Record<CampusRole, RoleDashboardConfig> = {
         description: 'Week view of classes and confirmed room allocations.',
         Icon: HiOutlineClipboardDocumentList,
         iconClass: 'bg-cyan-500/15 text-[#06B6D4] ring-1 ring-cyan-500/30',
+      },
+      {
+        to: '/maintenance/report',
+        title: 'Report incident',
+        description: 'Escalate projector, HVAC, or furniture issues in your venues.',
+        Icon: HiOutlineWrenchScrewdriver,
+        iconClass: 'bg-violet-500/15 text-[#8B5CF6] ring-1 ring-violet-500/30',
       },
     ],
     accountHint:
