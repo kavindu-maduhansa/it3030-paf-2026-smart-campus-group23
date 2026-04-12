@@ -13,6 +13,7 @@ import {
   HiOutlineUser
 } from 'react-icons/hi2'
 import { Pill, SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
+import CommentSection from '../components/CommentSection'
 
 interface Ticket {
   id: string
@@ -276,39 +277,46 @@ export default function MaintenancePage() {
                   </button>
                 </div>
                 
-                <div className="max-h-[70vh] overflow-y-auto p-6 space-y-6">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className={tilePanel}>
-                      <span className="text-xs font-semibold uppercase text-[#64748B]">Status</span>
-                      <p className="mt-1 font-semibold text-blue-400">{selectedTicket.status}</p>
+                <div className="max-h-[80vh] overflow-y-auto p-6 space-y-8">
+                  <div className="space-y-6">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className={tilePanel}>
+                        <span className="text-xs font-semibold uppercase text-[#64748B]">Status</span>
+                        <p className="mt-1 font-semibold text-blue-400">{selectedTicket.status}</p>
+                      </div>
+                      <div className={tilePanel}>
+                        <span className="text-xs font-semibold uppercase text-[#64748B]">Priority</span>
+                        <p className={`mt-1 font-semibold ${
+                          selectedTicket.priority === 'high' ? 'text-red-400' : 
+                          selectedTicket.priority === 'medium' ? 'text-amber-400' : 'text-emerald-400'
+                        }`}>{selectedTicket.priority.toUpperCase()}</p>
+                      </div>
                     </div>
-                    <div className={tilePanel}>
-                      <span className="text-xs font-semibold uppercase text-[#64748B]">Priority</span>
-                      <p className={`mt-1 font-semibold ${
-                        selectedTicket.priority === 'high' ? 'text-red-400' : 
-                        selectedTicket.priority === 'medium' ? 'text-amber-400' : 'text-emerald-400'
-                      }`}>{selectedTicket.priority.toUpperCase()}</p>
+                    
+                    <div>
+                      <h4 className="text-sm font-semibold uppercase text-[#64748B]">Description</h4>
+                      <p className="mt-2 text-white leading-relaxed">{selectedTicket.description}</p>
+                    </div>
+                    
+                    <div className="grid gap-4 sm:grid-cols-3 text-sm pb-6">
+                      <div>
+                        <h4 className="font-semibold text-[#64748B]">Category</h4>
+                        <p className="mt-1 text-white">{selectedTicket.category}</p>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-[#64748B]">Location</h4>
+                        <p className="mt-1 text-white">{selectedTicket.loc}</p>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-[#64748B]">Assignee</h4>
+                        <p className="mt-1 text-white">{selectedTicket.assignee}</p>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-semibold uppercase text-[#64748B]">Description</h4>
-                    <p className="mt-2 text-white leading-relaxed">{selectedTicket.description}</p>
-                  </div>
-                  
-                  <div className="grid gap-4 sm:grid-cols-3 text-sm">
-                    <div>
-                      <h4 className="font-semibold text-[#64748B]">Category</h4>
-                      <p className="mt-1 text-white">{selectedTicket.category}</p>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-[#64748B]">Location</h4>
-                      <p className="mt-1 text-white">{selectedTicket.loc}</p>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-[#64748B]">Assignee</h4>
-                      <p className="mt-1 text-white">{selectedTicket.assignee}</p>
-                    </div>
+
+                  {/* COMMENT SECTION */}
+                  <div className="border-t border-[#1F2937] pt-8">
+                    <CommentSection ticketId={selectedTicket.id} />
                   </div>
                 </div>
                 
