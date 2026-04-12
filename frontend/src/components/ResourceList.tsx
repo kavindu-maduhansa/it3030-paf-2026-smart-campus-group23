@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
+import type { AxiosError } from 'axios'
 import { getResources, deleteResource } from '../services/resourceService'
 import type { Resource } from '../services/resourceService'
 import type { ResourceEvent } from '../services/webSocketService'
 import ResourceSearch from './ResourceSearch'
+import ResourceFormModal from './ResourceFormModal'
 import { useAuth } from '../services/useAuth'
 import { useWebSocket } from '../hooks/useWebSocket'
 
@@ -14,6 +16,8 @@ const ResourceList = () => {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [selectedResource, setSelectedResource] = useState<Resource | null>(null)
 
   const loadResources = useCallback(async () => {
     // Don't attempt to load resources if not authenticated
@@ -30,15 +34,16 @@ const ResourceList = () => {
       console.log('[ResourceList] Resources loaded successfully, count:', response.data?.length)
       setResources(response.data)
       setError(null)
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Check if it's an authentication error
-      if (err.response?.status === 401) {
+      const axiosError = err as AxiosError<{ message: string }>
+      if (axiosError?.response?.status === 401) {
         console.error('[ResourceList] 401 Unauthorized - user needs to login')
         setError('Please log in to view resources')
         // Redirect to login
         window.location.href = '/login'
       } else {
-        console.error('[ResourceList] Error loading resources:', err.response?.status, err.message, err.response?.data)
+        console.error('[ResourceList] Error loading resources:', axiosError?.response?.status, axiosError?.message, axiosError?.response?.data)
         setError('Failed to load resources')
         console.error(err)
       }
@@ -140,7 +145,10 @@ const ResourceList = () => {
         {isAdmin && (
           <button
             className="rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_24px_rgba(59,130,246,0.4)] transition-all hover:bg-blue-500 hover:shadow-[0_0_28px_rgba(59,130,246,0.5)]"
-            onClick={() => alert('Add resource feature coming soon')}
+            onClick={() => {
+              setSelectedResource(null)
+              setShowForm(true)
+            }}
           >
             + Add Resource
           </button>
@@ -207,7 +215,10 @@ const ResourceList = () => {
                         <div className="flex gap-2">
                           <button
                             className="rounded-lg bg-[#3B82F6]/20 px-3 py-1.5 text-xs font-medium text-[#3B82F6] transition-all hover:bg-[#3B82F6]/30"
-                            onClick={() => alert('Edit feature coming soon')}
+                            onClick={() => {
+                              setSelectedResource(resource)
+                              setShowForm(true)
+                            }}
                           >
                             Edit
                           </button>
@@ -228,6 +239,17 @@ const ResourceList = () => {
           </table>
         </div>
       </div>
+
+      {showForm && (
+        <ResourceFormModal
+          resource={selectedResource}
+          onClose={() => {
+            setShowForm(false)
+            setSelectedResource(null)
+          }}
+          onSaved={loadResources}
+        />
+      )}
     </div>
   )
 }
