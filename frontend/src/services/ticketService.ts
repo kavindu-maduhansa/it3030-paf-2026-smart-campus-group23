@@ -23,6 +23,15 @@ export interface TicketResponseDTO {
   updatedAt: string
 }
 
+export interface CommentResponseDTO {
+  id: number
+  content: string
+  authorName: string
+  authorRole: string
+  createdAt: string
+  isMe: boolean
+}
+
 const API_URL = '/api/tickets'
 
 export const createTicket = async (ticket: TicketRequestDTO, images: File[]) => {
@@ -59,3 +68,9 @@ export const assignTechnician = (id: number, technicianId: number) =>
   apiClient.patch<TicketResponseDTO>(`${API_URL}/${id}/assign`, null, {
     params: { technicianId },
   })
+
+export const getComments = (ticketId: number) =>
+  apiClient.get<CommentResponseDTO[]>(`${API_URL}/${ticketId}/comments`)
+
+export const addComment = (ticketId: number, content: string) =>
+  apiClient.post<CommentResponseDTO>(`${API_URL}/${ticketId}/comments`, { content })

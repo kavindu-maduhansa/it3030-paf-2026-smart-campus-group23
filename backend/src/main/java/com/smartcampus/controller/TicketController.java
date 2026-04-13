@@ -1,14 +1,18 @@
 package com.smartcampus.controller;
 
-import com.smartcampus.dto.SessionUser;
-import com.smartcampus.dto.TicketRequestDTO;
-import com.smartcampus.dto.TicketResponseDTO;
+import com.smartcampus.dto.CommentRequestDTO;
+ import com.smartcampus.dto.CommentResponseDTO;
+ import com.smartcampus.dto.SessionUser;
+ import com.smartcampus.dto.TicketRequestDTO;
+ import com.smartcampus.dto.TicketResponseDTO;
 import com.smartcampus.entity.User;
 import com.smartcampus.exception.ResourceNotFoundException;
 import com.smartcampus.model.Ticket.TicketPriority;
 import com.smartcampus.model.Ticket.TicketStatus;
-import com.smartcampus.repository.UserRepository;
-import com.smartcampus.service.TicketService;
+import com.smartcampus.model.Ticket.TicketStatus;
+ import com.smartcampus.repository.UserRepository;
+ import com.smartcampus.service.CommentService;
+ import com.smartcampus.service.TicketService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
@@ -29,6 +33,7 @@ import java.util.List;
 public class TicketController {
 
     private final TicketService ticketService;
+    private final CommentService commentService;
     private final UserRepository userRepository;
 
     @PostMapping(consumes = {"multipart/form-data"})
@@ -79,6 +84,28 @@ public class TicketController {
         User currentUser = resolveUser(oauth2User, request);
         TicketResponseDTO response = ticketService.assignTechnician(id, technicianId, currentUser);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/comments")
+    public ResponseEntity<List<CommentResponseDTO>> getTicketComments(
+            @PathVariable Long id,
+            @AuthenticationPrincipal OAuth2User oauth2User,
+            HttpServletRequest request) {
+        
+        User currentUser = resolveUser(oauth2User, request);
+        return ResponseEntity.ok(commentService.getCommentsByTicketId(id, currentUser));
+    }
+
+    @PostMapping("/{id}/comments")
+    public ResponseEntity<CommentResponseDTO> addComment(
+            @PathVariable Long id,
+            @Valid @RequestBody CommentRequestDTO commentRequestDTO,
+            @AuthenticationPrincipal OAuth2User oauth2User,
+            HttpServletRequest request) {
+        
+        User currentUser = resolveUser(oauth2User, request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(commentService.addComment(id, commentRequestDTO, currentUser));
     }
 
     /**
