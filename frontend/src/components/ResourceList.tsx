@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AxiosError } from 'axios'
-import { getResources, deleteResource } from '../services/resourceService'
-import type { Resource } from '../services/resourceService'
+import { getResources, deleteResource, filterResources } from '../services/resourceService'
+import type { Resource, FilterParams } from '../services/resourceService'
 import type { ResourceEvent } from '../services/webSocketService'
 import ResourceSearch from './ResourceSearch'
+import ResourceFilter from './ResourceFilter'
 import ResourceFormModal from './ResourceFormModal'
 import { useAuth } from '../services/useAuth'
 import { useWebSocket } from '../hooks/useWebSocket'
@@ -47,6 +48,43 @@ const ResourceList = () => {
         setError('Failed to load resources')
         console.error(err)
       }
+    } finally {
+      setLoading(false)
+    }
+  }, [user])
+
+  const handleFilter = useCallback(async (newFilters: FilterParams) => {
+    if (!user) return
+    
+    try {
+      setLoading(true)
+      console.log('[ResourceList] Applying filters:', newFilters)
+      const response = await filterResources(newFilters)
+      console.log('[ResourceList] Filter successful, returned', response.data?.length, 'resources')
+      setResources(response.data)
+      setError(null)
+    } catch (err: unknown) {
+      const axiosError = err as AxiosError<{ message: string }>
+      console.error('[ResourceList] Filter error:', axiosError?.response?.status, axiosError?.message)
+      setError('Failed to filter resources')
+    } finally {
+      setLoading(false)
+    }
+  }, [user])
+
+  const handleResetFilter = useCallback(async () => {
+    if (!user) return
+    
+    try {
+      setLoading(true)
+      const response = await getResources()
+      console.log('[ResourceList] Filters reset, count:', response.data?.length)
+      setResources(response.data)
+      setError(null)
+    } catch (err: unknown) {
+      const axiosError = err as AxiosError<{ message: string }>
+      console.error('[ResourceList] Error resetting filters:', axiosError?.message)
+      setError('Failed to load resources')
     } finally {
       setLoading(false)
     }
@@ -138,6 +176,8 @@ const ResourceList = () => {
           Browse rooms, labs, and equipment. Data updates in real time when WebSocket is connected.
         </p>
       </header>
+
+      <ResourceFilter onFilter={handleFilter} onReset={handleResetFilter} />
 
       <ResourceSearch onSearch={setSearchTerm} />
 
