@@ -15,6 +15,7 @@ import AdminUsersPage from './pages/AdminUsersPage'
 import SchedulePage from './pages/SchedulePage'
 import BookingsPage from './pages/BookingsPage'
 import MaintenancePage from './pages/MaintenancePage'
+import ReportIncidentPage from './pages/ReportIncidentPage'
 
 function App() {
   return (
@@ -95,6 +96,16 @@ function App() {
                 <ProtectedRoute>
                   <PageShell>
                     <MaintenancePage />
+                  </PageShell>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/maintenance/report"
+              element={
+                <ProtectedRoute>
+                  <PageShell>
+                    <ReportIncidentPage />
                   </PageShell>
                 </ProtectedRoute>
               }

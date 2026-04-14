@@ -55,8 +55,8 @@ class AuthLoginIntegrationTest {
         req.setPassword("secret12");
 
         mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("local@test.edu"))
                 .andExpect(jsonPath("$.message").value("Login successful"));
@@ -69,8 +69,8 @@ class AuthLoginIntegrationTest {
         req.setPassword("wrongpassword");
 
         mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isUnauthorized());
     }
 }
