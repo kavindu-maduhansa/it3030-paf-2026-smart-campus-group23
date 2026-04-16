@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AxiosError } from 'axios'
-import { getResources, deleteResource, filterResources } from '../services/resourceService'
+import { getResources, deleteResource, filterResources, updateResource } from '../services/resourceService'
 import type { Resource, FilterParams } from '../services/resourceService'
 import type { ResourceEvent } from '../services/webSocketService'
 import ResourceSearch from './ResourceSearch'
@@ -119,6 +119,30 @@ const ResourceList = () => {
     }
   }
 
+  const handleToggleStatus = async (resource: Resource) => {
+    if (!resource.id || deletingId === resource.id) return
+    
+    const newStatus = resource.status === 'ACTIVE' ? 'OUT_OF_SERVICE' : 'ACTIVE'
+    
+    try {
+      const updatedResource = {
+        ...resource,
+        status: newStatus,
+      }
+      await updateResource(resource.id, updatedResource)
+      
+      // Update local state
+      setResources((prev) =>
+        prev.map((r) =>
+          r.id === resource.id ? { ...r, status: newStatus } : r
+        )
+      )
+    } catch (err) {
+      console.error('Failed to update resource status:', err)
+      alert('Failed to update resource status')
+    }
+  }
+
   useEffect(() => {
     // Wait for auth to complete before loading resources
     if (!authLoading && user) {
@@ -173,7 +197,7 @@ const ResourceList = () => {
           Facilities catalogue
         </h1>
         <p className="mt-2 max-w-2xl text-[#94A3B8]">
-          Browse rooms, labs, and equipment. Data updates in real time when WebSocket is connected.
+          Browse rooms, labs, and equipment.
         </p>
       </header>
 
@@ -240,15 +264,17 @@ const ResourceList = () => {
                     <td className="px-5 py-4 tabular-nums">{resource.capacity}</td>
                     <td className="px-5 py-4">{resource.location}</td>
                     <td className="px-5 py-4">
-                      <span
+                      <button
+                        onClick={() => handleToggleStatus(resource)}
+                        disabled={deletingId === resource.id}
                         className={
                           resource.status === 'ACTIVE'
-                            ? 'inline-flex rounded-full bg-[#10B981]/20 px-3 py-1 text-xs font-semibold text-emerald-300 ring-1 ring-[#10B981]/35'
-                            : 'inline-flex rounded-full bg-[#1E293B] px-3 py-1 text-xs font-semibold text-[#94A3B8] ring-1 ring-[#334155]'
+                            ? 'inline-flex rounded-full bg-[#10B981]/20 px-3 py-1 text-xs font-semibold text-emerald-300 ring-1 ring-[#10B981]/35 transition-all hover:bg-[#10B981]/40 disabled:opacity-50'
+                            : 'inline-flex rounded-full bg-[#EF4444]/20 px-3 py-1 text-xs font-semibold text-[#F87171] ring-1 ring-[#EF4444]/35 transition-all hover:bg-[#EF4444]/40 disabled:opacity-50'
                         }
                       >
                         {resource.status === 'ACTIVE' ? 'Available' : 'Unavailable'}
-                      </span>
+                      </button>
                     </td>
                     {isAdmin && (
                       <td className="px-5 py-4">

@@ -4,12 +4,14 @@ import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 
 @SpringBootApplication
 @EnableMethodSecurity
+@EnableScheduling
 public class SmartCampusBackendApplication {
 
 	public static void main(String[] args) {
