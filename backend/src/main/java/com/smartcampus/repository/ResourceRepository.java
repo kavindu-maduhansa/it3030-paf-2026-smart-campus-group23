@@ -24,25 +24,20 @@ public interface ResourceRepository extends JpaRepository<Resource, Long> {
     List<Resource> findByLocation(String location);
 
     /**
-     * Find resources by status
+     * Find resources by type and capacity
      */
-    List<Resource> findByStatus(Resource.ResourceStatus status);
-
-    /**
-     * Find active resources by type and capacity
-     */
-    @Query("SELECT r FROM Resource r WHERE r.status = com.smartcampus.model.Resource$ResourceStatus.ACTIVE AND r.type = :type AND r.capacity >= :capacity")
+    @Query("SELECT r FROM Resource r WHERE r.type = :type AND r.capacity >= :capacity")
     List<Resource> findAvailableByTypeAndCapacity(@Param("type") String type, @Param("capacity") Integer capacity);
 
     /**
      * Find resources with capacity greater than or equal to specified value
      */
-    List<Resource> findByCapacityGreaterThanEqualAndStatus(Integer capacity, Resource.ResourceStatus status);
+    List<Resource> findByCapacityGreaterThanEqual(Integer capacity);
 
     /**
-     * Find active resources by type and location
+     * Find resources by type and location
      */
-    List<Resource> findByTypeAndLocationAndStatus(String type, String location, Resource.ResourceStatus status);
+    List<Resource> findByTypeAndLocation(String type, String location);
 
     /**
      * Search resources by name or description (like)
@@ -51,17 +46,9 @@ public interface ResourceRepository extends JpaRepository<Resource, Long> {
     List<Resource> searchResources(@Param("search") String search);
 
     /**
-     * Find by status and type
-     */
-    List<Resource> findByStatusAndType(Resource.ResourceStatus status, String type);
-
-    /**
      * Count resources by type
      */
     Long countByType(String type);
 
-    /**
-     * Count active resources
-     */
-    Long countByStatus(Resource.ResourceStatus status);
+
 }

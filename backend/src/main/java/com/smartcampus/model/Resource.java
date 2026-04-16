@@ -38,10 +38,6 @@ public class Resource {
     @PositiveOrZero(message = "Capacity must be zero or positive")
     private Integer capacity;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private ResourceStatus status; // ACTIVE, OUT_OF_SERVICE
-
     @Column(name = "availability_start", columnDefinition = "TIME")
     private LocalTime availabilityStart;
 
@@ -66,9 +62,5 @@ public class Resource {
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
-    }
-
-    public enum ResourceStatus {
-        ACTIVE, OUT_OF_SERVICE
     }
 }

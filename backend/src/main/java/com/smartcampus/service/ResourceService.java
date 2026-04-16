@@ -54,24 +54,17 @@ public class ResourceService {
     }
 
     /**
-     * Filter resources by status
-     */
-    public List<Resource> getResourcesByStatus(Resource.ResourceStatus status) {
-        return resourceRepository.findByStatus(status);
-    }
-
-    /**
-     * Filter resources by minimum capacity (active only)
+     * Filter resources by minimum capacity
      */
     public List<Resource> getResourcesByCapacity(Integer minCapacity) {
-        return resourceRepository.findByCapacityGreaterThanEqualAndStatus(minCapacity, Resource.ResourceStatus.ACTIVE);
+        return resourceRepository.findByCapacityGreaterThanEqual(minCapacity);
     }
 
     /**
-     * Advanced filtering: type, location, and status
+     * Advanced filtering: type and location
      */
-    public List<Resource> filterResources(String type, String location, Resource.ResourceStatus status) {
-        return resourceRepository.findByTypeAndLocationAndStatus(type, location, status);
+    public List<Resource> filterResources(String type, String location) {
+        return resourceRepository.findByTypeAndLocation(type, location);
     }
 
     /**
@@ -116,7 +109,6 @@ public class ResourceService {
         existing.setType(resourceDetails.getType());
         existing.setCapacity(resourceDetails.getCapacity());
         existing.setLocation(resourceDetails.getLocation());
-        existing.setStatus(resourceDetails.getStatus());
         existing.setAvailabilityStart(resourceDetails.getAvailabilityStart());
         existing.setAvailabilityEnd(resourceDetails.getAvailabilityEnd());
         
@@ -128,7 +120,7 @@ public class ResourceService {
             updated.getName(),
             updated.getType(),
             updated.getLocation(),
-            updated.getStatus().toString()
+            "updated"
         );
         ResourceWebSocketHandler.broadcastResourceUpdate(event);
         
@@ -156,10 +148,5 @@ public class ResourceService {
         return resourceRepository.countByType(type);
     }
 
-    /**
-     * Get count of active resources
-     */
-    public Long countActiveResources() {
-        return resourceRepository.countByStatus(Resource.ResourceStatus.ACTIVE);
-    }
+
 }

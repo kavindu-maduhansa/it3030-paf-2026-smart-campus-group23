@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AxiosError } from 'axios'
-import { getResources, deleteResource, filterResources, updateResource } from '../services/resourceService'
+import { getResources, deleteResource, filterResources } from '../services/resourceService'
 import type { Resource, FilterParams } from '../services/resourceService'
 import type { ResourceEvent } from '../services/webSocketService'
 import ResourceSearch from './ResourceSearch'
@@ -8,6 +8,82 @@ import ResourceFilter from './ResourceFilter'
 import ResourceFormModal from './ResourceFormModal'
 import { useAuth } from '../services/useAuth'
 import { useWebSocket } from '../hooks/useWebSocket'
+
+// Helper function to determine availability status
+type AvailabilityStatus = 'AVAILABLE_NOW' | 'AVAILABLE_SOON' | 'NOT_AVAILABLE'
+
+const getAvailabilityStatus = (resource: Resource): AvailabilityStatus => {
+  // If neither time is provided, consider it available now
+  if (!resource.availabilityStart && !resource.availabilityEnd) {
+    return 'AVAILABLE_NOW'
+  }
+
+  // Get current time in HH:MM format
+  const now = new Date()
+  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+
+  // Parse availability times (format: "HH:MM" from backend)
+  const startTime = resource.availabilityStart ? String(resource.availabilityStart).substring(0, 5) : null
+  const endTime = resource.availabilityEnd ? String(resource.availabilityEnd).substring(0, 5) : null
+
+  // Check if current time is within the availability window
+  if (startTime && endTime) {
+    if (currentTime >= startTime && currentTime <= endTime) {
+      return 'AVAILABLE_NOW'
+    } else if (currentTime < startTime) {
+      return 'AVAILABLE_SOON'
+    } else {
+      return 'NOT_AVAILABLE'
+    }
+  }
+
+  // If only start time exists
+  if (startTime && !endTime) {
+    if (currentTime >= startTime) {
+      return 'AVAILABLE_NOW'
+    } else {
+      return 'AVAILABLE_SOON'
+    }
+  }
+
+  // If only end time exists
+  if (!startTime && endTime) {
+    if (currentTime <= endTime) {
+      return 'AVAILABLE_NOW'
+    } else {
+      return 'NOT_AVAILABLE'
+    }
+  }
+
+  return 'AVAILABLE_NOW'
+}
+
+// Helper function to get badge styling
+const getAvailabilityBadgeStyle = (status: AvailabilityStatus) => {
+  switch (status) {
+    case 'AVAILABLE_NOW':
+      return {
+        bg: 'bg-emerald-500/20',
+        ring: 'ring-emerald-500/35',
+        text: 'text-emerald-300',
+        label: 'Available Now',
+      }
+    case 'AVAILABLE_SOON':
+      return {
+        bg: 'bg-yellow-500/20',
+        ring: 'ring-yellow-500/35',
+        text: 'text-yellow-300',
+        label: 'Available Soon',
+      }
+    case 'NOT_AVAILABLE':
+      return {
+        bg: 'bg-red-500/20',
+        ring: 'ring-red-500/35',
+        text: 'text-red-300',
+        label: 'Not Available',
+      }
+  }
+}
 
 const ResourceList = () => {
   const { user, loading: authLoading } = useAuth()
@@ -19,6 +95,7 @@ const ResourceList = () => {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null)
+  const [refreshTime, setRefreshTime] = useState(0) // Triggers re-render for availability updates
 
   const loadResources = useCallback(async () => {
     // Don't attempt to load resources if not authenticated
@@ -119,30 +196,6 @@ const ResourceList = () => {
     }
   }
 
-  const handleToggleStatus = async (resource: Resource) => {
-    if (!resource.id || deletingId === resource.id) return
-    
-    const newStatus = resource.status === 'ACTIVE' ? 'OUT_OF_SERVICE' : 'ACTIVE'
-    
-    try {
-      const updatedResource = {
-        ...resource,
-        status: newStatus,
-      }
-      await updateResource(resource.id, updatedResource)
-      
-      // Update local state
-      setResources((prev) =>
-        prev.map((r) =>
-          r.id === resource.id ? { ...r, status: newStatus } : r
-        )
-      )
-    } catch (err) {
-      console.error('Failed to update resource status:', err)
-      alert('Failed to update resource status')
-    }
-  }
-
   useEffect(() => {
     // Wait for auth to complete before loading resources
     if (!authLoading && user) {
@@ -150,6 +203,15 @@ const ResourceList = () => {
       void loadResources()
     }
   }, [authLoading, user, loadResources])
+
+  // Auto-update availability status every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setRefreshTime((prev) => prev + 1)
+    }, 1000) // Update every 1 second
+
+    return () => clearInterval(timer)
+  }, [])
 
   if (authLoading || loading) {
     return (
@@ -186,6 +248,8 @@ const ResourceList = () => {
       resource.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       resource.type.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  // Use refreshTime to trigger re-renders for availability updates (avoids stale status)
 
   return (
     <div>
@@ -237,7 +301,7 @@ const ResourceList = () => {
                   Location
                 </th>
                 <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">
-                  Status
+                  Availability
                 </th>
                 {isAdmin && (
                   <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">
@@ -254,52 +318,49 @@ const ResourceList = () => {
                   </td>
                 </tr>
               ) : (
-                filteredResources.map((resource) => (
-                  <tr
-                    key={resource.id}
-                    className="transition-colors hover:bg-[#3B82F6]/[0.08]"
-                  >
-                    <td className="px-5 py-4 font-medium text-white">{resource.name}</td>
-                    <td className="px-5 py-4">{resource.type}</td>
-                    <td className="px-5 py-4 tabular-nums">{resource.capacity}</td>
-                    <td className="px-5 py-4">{resource.location}</td>
-                    <td className="px-5 py-4">
-                      <button
-                        onClick={() => handleToggleStatus(resource)}
-                        disabled={deletingId === resource.id}
-                        className={
-                          resource.status === 'ACTIVE'
-                            ? 'inline-flex rounded-full bg-[#10B981]/20 px-3 py-1 text-xs font-semibold text-emerald-300 ring-1 ring-[#10B981]/35 transition-all hover:bg-[#10B981]/40 disabled:opacity-50'
-                            : 'inline-flex rounded-full bg-[#EF4444]/20 px-3 py-1 text-xs font-semibold text-[#F87171] ring-1 ring-[#EF4444]/35 transition-all hover:bg-[#EF4444]/40 disabled:opacity-50'
-                        }
-                      >
-                        {resource.status === 'ACTIVE' ? 'Available' : 'Unavailable'}
-                      </button>
-                    </td>
-                    {isAdmin && (
+                filteredResources.map((resource) => {
+                  const availabilityStatus = getAvailabilityStatus(resource)
+                  const badgeStyle = getAvailabilityBadgeStyle(availabilityStatus)
+                  
+                  return (
+                    <tr
+                      key={`${resource.id}-${refreshTime}`}
+                      className="transition-colors hover:bg-[#3B82F6]/[0.08]"
+                    >
+                      <td className="px-5 py-4 font-medium text-white">{resource.name}</td>
+                      <td className="px-5 py-4">{resource.type}</td>
+                      <td className="px-5 py-4 tabular-nums">{resource.capacity}</td>
+                      <td className="px-5 py-4">{resource.location}</td>
                       <td className="px-5 py-4">
-                        <div className="flex gap-2">
-                          <button
-                            className="rounded-lg bg-[#3B82F6]/20 px-3 py-1.5 text-xs font-medium text-[#3B82F6] transition-all hover:bg-[#3B82F6]/30"
-                            onClick={() => {
-                              setSelectedResource(resource)
-                              setShowForm(true)
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            disabled={deletingId === resource.id}
-                            className="rounded-lg bg-[#EF4444]/20 px-3 py-1.5 text-xs font-medium text-[#F87171] transition-all hover:bg-[#EF4444]/30 disabled:opacity-50"
-                            onClick={() => handleDelete(resource.id)}
-                          >
-                            {deletingId === resource.id ? 'Deleting...' : 'Delete'}
-                          </button>
-                        </div>
+                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${badgeStyle.bg} ${badgeStyle.ring} ${badgeStyle.text}`}>
+                          {badgeStyle.label}
+                        </span>
                       </td>
-                    )}
-                  </tr>
-                ))
+                      {isAdmin && (
+                        <td className="px-5 py-4">
+                          <div className="flex gap-2">
+                            <button
+                              className="rounded-lg bg-[#3B82F6]/20 px-3 py-1.5 text-xs font-medium text-[#3B82F6] transition-all hover:bg-[#3B82F6]/30"
+                              onClick={() => {
+                                setSelectedResource(resource)
+                                setShowForm(true)
+                              }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              disabled={deletingId === resource.id}
+                              className="rounded-lg bg-[#EF4444]/20 px-3 py-1.5 text-xs font-medium text-[#F87171] transition-all hover:bg-[#EF4444]/30 disabled:opacity-50"
+                              onClick={() => handleDelete(resource.id)}
+                            >
+                              {deletingId === resource.id ? 'Deleting...' : 'Delete'}
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>

@@ -59,7 +59,6 @@ public class ResourceController {
         resource.setType(request.getType());
         resource.setCapacity(request.getCapacity());
         resource.setLocation(request.getLocation());
-        resource.setStatus(request.getStatus());
         resource.setAvailabilityStart(request.getAvailabilityStart());
         resource.setAvailabilityEnd(request.getAvailabilityEnd());
         
@@ -83,7 +82,6 @@ public class ResourceController {
         resourceDetails.setType(request.getType());
         resourceDetails.setCapacity(request.getCapacity());
         resourceDetails.setLocation(request.getLocation());
-        resourceDetails.setStatus(request.getStatus());
         resourceDetails.setAvailabilityStart(request.getAvailabilityStart());
         resourceDetails.setAvailabilityEnd(request.getAvailabilityEnd());
         
@@ -137,17 +135,6 @@ public class ResourceController {
     }
 
     /**
-     * GET: Filter resources by status
-     * HTTP: 200 OK
-     * Query Param: status (ACTIVE or OUT_OF_SERVICE)
-     */
-    @GetMapping("/status")
-    public ResponseEntity<List<Resource>> getResourcesByStatus(@RequestParam Resource.ResourceStatus status) {
-        List<Resource> resources = resourceService.getResourcesByStatus(status);
-        return ResponseEntity.ok(resources);
-    }
-
-    /**
      * GET: Filter resources by minimum capacity
      * HTTP: 200 OK
      * Query Param: capacity (minimum capacity required)
@@ -161,16 +148,15 @@ public class ResourceController {
     /**
      * GET: Advanced filtering with multiple criteria
      * HTTP: 200 OK
-     * Query Params: type, location, status
+     * Query Params: type, location
      */
     @GetMapping("/filter")
     public ResponseEntity<List<Resource>> filterResources(
             @RequestParam(required = false) String type,
-            @RequestParam(required = false) String location,
-            @RequestParam(required = false) Resource.ResourceStatus status) {
+            @RequestParam(required = false) String location) {
         
-        if (type != null && location != null && status != null) {
-            List<Resource> resources = resourceService.filterResources(type, location, status);
+        if (type != null && location != null) {
+            List<Resource> resources = resourceService.filterResources(type, location);
             return ResponseEntity.ok(resources);
         }
         

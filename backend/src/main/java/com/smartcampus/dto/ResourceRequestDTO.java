@@ -26,9 +26,6 @@ public class ResourceRequestDTO {
     @NotBlank(message = "Resource location is required")
     private String location;
 
-    @NotNull(message = "Resource status is required")
-    private Resource.ResourceStatus status;
-
     private LocalTime availabilityStart;
 
     private LocalTime availabilityEnd;
@@ -71,14 +68,6 @@ public class ResourceRequestDTO {
 
     public void setLocation(String location) {
         this.location = location;
-    }
-
-    public Resource.ResourceStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(Resource.ResourceStatus status) {
-        this.status = status;
     }
 
     public LocalTime getAvailabilityStart() {

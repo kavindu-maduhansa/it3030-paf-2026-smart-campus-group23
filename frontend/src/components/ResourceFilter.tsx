@@ -13,15 +13,9 @@ const RESOURCE_TYPES = [
   { value: 'EQUIPMENT', label: 'Equipment' }
 ]
 
-const STATUSES = [
-  { value: 'ACTIVE', label: 'Available' },
-  { value: 'OUT_OF_SERVICE', label: 'Unavailable' }
-]
-
 export default function ResourceFilter({ onFilter, onReset }: ResourceFilterProps) {
   const [type, setType] = useState('')
   const [location, setLocation] = useState('')
-  const [status, setStatus] = useState('')
 
   const handleFilter = (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,7 +23,6 @@ export default function ResourceFilter({ onFilter, onReset }: ResourceFilterProp
     
     if (type) filters.type = type
     if (location) filters.location = location
-    if (status) filters.status = status as 'ACTIVE' | 'OUT_OF_SERVICE'
     
     onFilter(filters)
   }
@@ -37,11 +30,10 @@ export default function ResourceFilter({ onFilter, onReset }: ResourceFilterProp
   const handleReset = () => {
     setType('')
     setLocation('')
-    setStatus('')
     onReset()
   }
 
-  const hasActiveFilters = type || location || status
+  const hasActiveFilters = type || location
 
   return (
     <form onSubmit={handleFilter} className="mb-6 rounded-2xl border border-[#1F2937] bg-[#111827] p-5 shadow-lg shadow-black/30">
@@ -84,26 +76,6 @@ export default function ResourceFilter({ onFilter, onReset }: ResourceFilterProp
               onChange={(e) => setLocation(e.target.value)}
               className="rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-2 text-sm text-[#E2E8F0] placeholder-[#64748B] transition-colors focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30"
             />
-          </div>
-
-          {/* Status Dropdown */}
-          <div className="flex flex-col gap-2">
-            <label htmlFor="status" className="text-xs font-medium text-[#CBD5E1]">
-              Status
-            </label>
-            <select
-              id="status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-2 text-sm text-[#E2E8F0] transition-colors focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30"
-            >
-              <option value="">All Status</option>
-              {STATUSES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
 
