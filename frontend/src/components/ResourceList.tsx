@@ -28,7 +28,7 @@ const getAvailabilityStatus = (resource: Resource): AvailabilityStatus => {
 
   // Check if current time is within the availability window
   if (startTime && endTime) {
-    if (currentTime >= startTime && currentTime <= endTime) {
+    if (currentTime >= startTime && currentTime < endTime) {
       return 'AVAILABLE_NOW'
     } else if (currentTime < startTime) {
       return 'AVAILABLE_SOON'
@@ -48,7 +48,7 @@ const getAvailabilityStatus = (resource: Resource): AvailabilityStatus => {
 
   // If only end time exists
   if (!startTime && endTime) {
-    if (currentTime <= endTime) {
+    if (currentTime < endTime) {
       return 'AVAILABLE_NOW'
     } else {
       return 'NOT_AVAILABLE'
