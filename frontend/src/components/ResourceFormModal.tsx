@@ -1,8 +1,9 @@
 // React modal form component for creating and editing resources
-// fields: name, type, capacity, location, status, availabilityStart, availabilityEnd, description
+// fields: name, type, capacity, location, availabilityStart, availabilityEnd, description
 // use useState to manage form data
 // call createResource when creating and updateResource when editing
 // accept props: resource, onClose, onSaved
+// Note: Status is updated via clickable badge in ResourceList, not in this form
 
 import { useState, useEffect } from 'react'
 import type { AxiosError } from 'axios'
@@ -21,7 +22,6 @@ const ResourceFormModal = ({ resource, onClose, onSaved }: ResourceFormModalProp
     type: 'CLASSROOM',
     location: '',
     capacity: 0,
-    status: 'ACTIVE',
     description: '',
     availabilityStart: '08:00',
     availabilityEnd: '18:00',
@@ -170,24 +170,6 @@ const ResourceFormModal = ({ resource, onClose, onSaved }: ResourceFormModalProp
               className="mt-2 w-full rounded-lg border border-[#334155] bg-[#1E293B] px-4 py-2.5 text-white placeholder-[#64748B] transition-colors focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]"
               placeholder="e.g., Building A, 1st Floor"
             />
-          </div>
-
-          {/* Status */}
-          <div>
-            <label htmlFor="status" className="block text-sm font-semibold text-[#CBD5E1]">
-              Status
-            </label>
-            <select
-              id="status"
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-              className="mt-2 w-full rounded-lg border border-[#334155] bg-[#1E293B] px-4 py-2.5 text-white transition-colors focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]"
-            >
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-              <option value="MAINTENANCE">Maintenance</option>
-            </select>
           </div>
 
           {/* Availability Times */}
