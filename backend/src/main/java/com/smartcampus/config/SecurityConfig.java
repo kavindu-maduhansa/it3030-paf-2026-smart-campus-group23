@@ -52,10 +52,13 @@ public class SecurityConfig {
                 // Public endpoints - auth status check, login, and registration
                 .requestMatchers("/api/auth/**").permitAll()
                 
+                // Dev endpoints - for testing only
+                .requestMatchers("/api/dev/**").permitAll()
+                
                 // Resource endpoints - allow all authenticated users to view, restrict write operations
                 .requestMatchers("/api/resources/**").permitAll()
                 
-                // Admin endpoints - ADMIN only
+                // Admin & Analytics endpoints - ADMIN only
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 
                 // Tickets endpoints - ADMIN or TECHNICIAN

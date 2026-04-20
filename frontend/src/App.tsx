@@ -16,6 +16,7 @@ import SchedulePage from './pages/SchedulePage'
 import BookingsPage from './pages/BookingsPage'
 import MaintenancePage from './pages/MaintenancePage'
 import ReportIncidentPage from './pages/ReportIncidentPage'
+import { AnalyticsDashboard } from './components/AnalyticsDashboard'
 
 function App() {
   return (
@@ -106,6 +107,16 @@ function App() {
                 <ProtectedRoute>
                   <PageShell>
                     <ReportIncidentPage />
+                  </PageShell>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <ProtectedRoute>
+                  <PageShell>
+                    <AnalyticsDashboard />
                   </PageShell>
                 </ProtectedRoute>
               }
