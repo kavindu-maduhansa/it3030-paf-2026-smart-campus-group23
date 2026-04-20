@@ -76,8 +76,14 @@ export default function AdminPanels() {
           </ul>
           <div className="mt-6 flex flex-wrap gap-2">
             <Link
-              to="/bookings"
+              to="/analytics"
               className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+            >
+              View analytics
+            </Link>
+            <Link
+              to="/bookings"
+              className="rounded-lg border border-[#334155] px-4 py-2 text-sm font-semibold text-white hover:border-[#3B82F6]/50"
             >
               Review bookings
             </Link>
