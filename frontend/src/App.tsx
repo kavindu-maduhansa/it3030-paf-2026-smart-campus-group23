@@ -16,6 +16,7 @@ import SchedulePage from './pages/SchedulePage'
 import BookingsPage from './pages/BookingsPage'
 import MaintenancePage from './pages/MaintenancePage'
 import ReportIncidentPage from './pages/ReportIncidentPage'
+import TechnicianDashboardPage from './pages/TechnicianDashboardPage'
 import { AnalyticsDashboard } from './components/AnalyticsDashboard'
 
 function App() {
@@ -37,6 +38,16 @@ function App() {
                 <ProtectedRoute>
                   <PageShell>
                     <DashboardPage />
+                  </PageShell>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/technician/dashboard"
+              element={
+                <ProtectedRoute requiredRole="TECHNICIAN">
+                  <PageShell>
+                    <TechnicianDashboardPage />
                   </PageShell>
                 </ProtectedRoute>
               }
