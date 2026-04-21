@@ -15,7 +15,7 @@ import AdminUsersPage from './pages/AdminUsersPage'
 import SchedulePage from './pages/SchedulePage'
 import BookingsPage from './pages/BookingsPage'
 import MaintenancePage from './pages/MaintenancePage'
-import ReportIncidentPage from './pages/ReportIncidentPage'
+import MaintenanceSupportPage from './pages/MaintenanceSupportPage'
 import TechnicianDashboardPage from './pages/TechnicianDashboardPage'
 import { AnalyticsDashboard } from './components/AnalyticsDashboard'
 
@@ -117,7 +117,7 @@ function App() {
               element={
                 <ProtectedRoute>
                   <PageShell>
-                    <ReportIncidentPage />
+                    <MaintenanceSupportPage />
                   </PageShell>
                 </ProtectedRoute>
               }

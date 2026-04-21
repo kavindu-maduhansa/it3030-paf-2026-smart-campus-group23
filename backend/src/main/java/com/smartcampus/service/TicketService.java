@@ -101,6 +101,17 @@ public class TicketService {
         }
 
         return tickets.stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(this::convertToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<TicketResponseDTO> getMyTickets(User user) {
+        log.info("Fetching tickets for owner: {}", user.getEmail());
+        return ticketRepository.findByUserId(user.getId())
+                .stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .map(this::convertToResponseDTO)
                 .collect(Collectors.toList());
     }
@@ -177,7 +188,7 @@ public class TicketService {
         return convertToResponseDTO(ticket);
     }
 
-    private TicketResponseDTO convertToResponseDTO(Ticket ticket) {
+    public TicketResponseDTO convertToResponseDTO(Ticket ticket) {
         return TicketResponseDTO.builder()
                 .id(ticket.getId())
                 .title(ticket.getTitle())
