@@ -1,6 +1,7 @@
 package com.smartcampus.repository;
 
 import com.smartcampus.model.Resource;
+import com.smartcampus.model.ResourceStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,6 +23,11 @@ public interface ResourceRepository extends JpaRepository<Resource, Long> {
      * Find resources by location
      */
     List<Resource> findByLocation(String location);
+
+    /**
+     * Find resources by status
+     */
+    List<Resource> findByStatus(ResourceStatus status);
 
     /**
      * Find resources by type and capacity

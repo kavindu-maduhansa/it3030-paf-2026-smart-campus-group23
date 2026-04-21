@@ -111,6 +111,7 @@ public class ResourceService {
         existing.setLocation(resourceDetails.getLocation());
         existing.setAvailabilityStart(resourceDetails.getAvailabilityStart());
         existing.setAvailabilityEnd(resourceDetails.getAvailabilityEnd());
+        existing.setStatus(resourceDetails.getStatus());
         
         Resource updated = resourceRepository.save(existing);
         
@@ -146,6 +147,47 @@ public class ResourceService {
      */
     public Long countResourcesByType(String type) {
         return resourceRepository.countByType(type);
+    }
+
+    /**
+     * Get resources by status (ACTIVE or OUT_OF_SERVICE)
+     */
+    public List<Resource> getResourcesByStatus(String status) {
+        try {
+            com.smartcampus.model.ResourceStatus statusEnum = com.smartcampus.model.ResourceStatus.valueOf(status.toUpperCase());
+            return resourceRepository.findByStatus(statusEnum);
+        } catch (IllegalArgumentException e) {
+            // Invalid status, return empty list
+            return List.of();
+        }
+    }
+
+    /**
+     * Toggle resource status (ACTIVE <-> OUT_OF_SERVICE)
+     * Throws exception if resource not found
+     */
+    public Resource toggleResourceStatus(Long id) {
+        Resource existing = getResourceById(id);
+        
+        if (existing.getStatus() == com.smartcampus.model.ResourceStatus.ACTIVE) {
+            existing.setStatus(com.smartcampus.model.ResourceStatus.OUT_OF_SERVICE);
+        } else {
+            existing.setStatus(com.smartcampus.model.ResourceStatus.ACTIVE);
+        }
+        
+        Resource updated = resourceRepository.save(existing);
+        
+        // Broadcast event to all connected WebSocket clients
+        ResourceEvent event = ResourceEvent.updated(
+            updated.getId(),
+            updated.getName(),
+            updated.getType(),
+            updated.getLocation(),
+            "status changed to " + updated.getStatus()
+        );
+        ResourceWebSocketHandler.broadcastResourceUpdate(event);
+        
+        return updated;
     }
 
 

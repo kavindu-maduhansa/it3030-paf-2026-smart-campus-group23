@@ -61,6 +61,7 @@ public class ResourceController {
         resource.setLocation(request.getLocation());
         resource.setAvailabilityStart(request.getAvailabilityStart());
         resource.setAvailabilityEnd(request.getAvailabilityEnd());
+        resource.setStatus(request.getStatus() != null ? request.getStatus() : com.smartcampus.model.ResourceStatus.ACTIVE);
         
         Resource created = resourceService.createResource(resource);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -84,6 +85,7 @@ public class ResourceController {
         resourceDetails.setLocation(request.getLocation());
         resourceDetails.setAvailabilityStart(request.getAvailabilityStart());
         resourceDetails.setAvailabilityEnd(request.getAvailabilityEnd());
+        resourceDetails.setStatus(request.getStatus() != null ? request.getStatus() : com.smartcampus.model.ResourceStatus.ACTIVE);
         
         Resource updated = resourceService.updateResource(id, resourceDetails);
         return ResponseEntity.ok(updated);
@@ -163,4 +165,28 @@ public class ResourceController {
         // Return all if no filters provided
         return ResponseEntity.ok(resourceService.getAllResources());
     }
+
+    /**
+     * GET: Filter resources by status
+     * HTTP: 200 OK
+     * Example: /api/resources/status/ACTIVE
+     */
+    @GetMapping("/status/{status}")
+    public ResponseEntity<List<Resource>> getResourcesByStatus(@PathVariable String status) {
+        List<Resource> resources = resourceService.getResourcesByStatus(status);
+        return ResponseEntity.ok(resources);
+    }
+
+    /**
+     * PATCH: Toggle resource status (ACTIVE <-> OUT_OF_SERVICE)
+     * HTTP: 200 OK, 404 NOT FOUND
+     * Restricted to: ADMIN, TECHNICIAN
+     */
+    @PreAuthorize("hasAnyRole('ADMIN','TECHNICIAN')")
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Resource> toggleResourceStatus(@PathVariable Long id) {
+        Resource updated = resourceService.toggleResourceStatus(id);
+        return ResponseEntity.ok(updated);
+    }
 }
+

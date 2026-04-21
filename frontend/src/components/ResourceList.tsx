@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AxiosError } from 'axios'
-import { getResources, deleteResource, filterResources } from '../services/resourceService'
+import { getResources, deleteResource, filterResources, toggleResourceStatus } from '../services/resourceService'
 import type { Resource, FilterParams } from '../services/resourceService'
 import type { ResourceEvent } from '../services/webSocketService'
 import ResourceSearch from './ResourceSearch'
@@ -93,6 +93,7 @@ const ResourceList = () => {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [togglingId, setTogglingId] = useState<number | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null)
   const [refreshTime, setRefreshTime] = useState(0) // Triggers re-render for availability updates
@@ -193,6 +194,23 @@ const ResourceList = () => {
       alert('Failed to delete resource')
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const handleToggleStatus = async (id: number | undefined) => {
+    if (!id) return
+    try {
+      setTogglingId(id)
+      const response = await toggleResourceStatus(id)
+      // Update the resource in the list with the new status
+      setResources((prev) =>
+        prev.map((r) => (r.id === id ? response.data : r))
+      )
+    } catch (err) {
+      console.error('Failed to toggle resource status:', err)
+      alert('Failed to toggle resource status')
+    } finally {
+      setTogglingId(null)
     }
   }
 
@@ -303,6 +321,9 @@ const ResourceList = () => {
                 <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">
                   Availability
                 </th>
+                <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">
+                  Status
+                </th>
                 {isAdmin && (
                   <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">
                     Actions
@@ -313,7 +334,7 @@ const ResourceList = () => {
             <tbody className="divide-y divide-[#1F2937] text-[#CBD5E1]">
               {filteredResources.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 6 : 5} className="px-5 py-16 text-center text-[#94A3B8]">
+                  <td colSpan={isAdmin ? 7 : 6} className="px-5 py-16 text-center text-[#94A3B8]">
                     No resources match your search.
                   </td>
                 </tr>
@@ -321,6 +342,7 @@ const ResourceList = () => {
                 filteredResources.map((resource) => {
                   const availabilityStatus = getAvailabilityStatus(resource)
                   const badgeStyle = getAvailabilityBadgeStyle(availabilityStatus)
+                  const isActive = resource.status === 'ACTIVE'
                   
                   return (
                     <tr
@@ -335,6 +357,29 @@ const ResourceList = () => {
                         <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${badgeStyle.bg} ${badgeStyle.ring} ${badgeStyle.text}`}>
                           {badgeStyle.label}
                         </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        {isAdmin ? (
+                          <button
+                            disabled={togglingId === resource.id}
+                            onClick={() => handleToggleStatus(resource.id)}
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 transition-all ${
+                              isActive
+                                ? 'bg-emerald-500/20 ring-emerald-500/35 text-emerald-300 hover:bg-emerald-500/30'
+                                : 'bg-orange-500/20 ring-orange-500/35 text-orange-300 hover:bg-orange-500/30'
+                            } disabled:opacity-50 cursor-pointer`}
+                          >
+                            {togglingId === resource.id ? 'Updating...' : isActive ? 'Active' : 'Out of Service'}
+                          </button>
+                        ) : (
+                          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
+                            isActive
+                              ? 'bg-emerald-500/20 ring-emerald-500/35 text-emerald-300'
+                              : 'bg-orange-500/20 ring-orange-500/35 text-orange-300'
+                          }`}>
+                            {isActive ? 'Active' : 'Out of Service'}
+                          </span>
+                        )}
                       </td>
                       {isAdmin && (
                         <td className="px-5 py-4">

@@ -1,9 +1,9 @@
 // React modal form component for creating and editing resources
-// fields: name, type, capacity, location, availabilityStart, availabilityEnd, description
+// fields: name, type, capacity, location, availabilityStart, availabilityEnd, description, status
 // use useState to manage form data
 // call createResource when creating and updateResource when editing
 // accept props: resource, onClose, onSaved
-// Note: Status is updated via clickable badge in ResourceList, not in this form
+// Status can be updated in this form or via quick toggle in ResourceList
 
 import { useState, useEffect } from 'react'
 import type { AxiosError } from 'axios'
@@ -25,6 +25,7 @@ const ResourceFormModal = ({ resource, onClose, onSaved }: ResourceFormModalProp
     description: '',
     availabilityStart: '08:00',
     availabilityEnd: '18:00',
+    status: 'ACTIVE',
   })
 
   const [loading, setLoading] = useState(false)
@@ -201,6 +202,23 @@ const ResourceFormModal = ({ resource, onClose, onSaved }: ResourceFormModalProp
                 className="mt-2 w-full rounded-lg border border-[#334155] bg-[#1E293B] px-4 py-2.5 text-white transition-colors focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]"
               />
             </div>
+          </div>
+
+          {/* Status */}
+          <div>
+            <label htmlFor="status" className="block text-sm font-semibold text-[#CBD5E1]">
+              Status
+            </label>
+            <select
+              id="status"
+              name="status"
+              value={formData.status || 'ACTIVE'}
+              onChange={handleChange}
+              className="mt-2 w-full rounded-lg border border-[#334155] bg-[#1E293B] px-4 py-2.5 text-white transition-colors focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]"
+            >
+              <option value="ACTIVE">Active</option>
+              <option value="OUT_OF_SERVICE">Out of Service</option>
+            </select>
           </div>
 
           {/* Description */}

@@ -1,5 +1,6 @@
 package com.smartcampus.dto;
 
+import com.smartcampus.model.ResourceStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import java.time.LocalTime;
@@ -27,6 +28,8 @@ public class ResourceRequestDTO {
     private LocalTime availabilityStart;
 
     private LocalTime availabilityEnd;
+
+    private ResourceStatus status = ResourceStatus.ACTIVE;
 
     public String getName() {
         return name;
@@ -82,5 +85,13 @@ public class ResourceRequestDTO {
 
     public void setAvailabilityEnd(LocalTime availabilityEnd) {
         this.availabilityEnd = availabilityEnd;
+    }
+
+    public ResourceStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ResourceStatus status) {
+        this.status = status;
     }
 }

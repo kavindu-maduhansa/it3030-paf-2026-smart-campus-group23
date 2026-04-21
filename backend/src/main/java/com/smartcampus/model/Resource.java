@@ -2,6 +2,7 @@ package com.smartcampus.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -34,6 +35,11 @@ public class Resource {
     @NotBlank(message = "Resource location is required")
     @Column(nullable = false)
     private String location;
+
+    @NotNull(message = "Resource status is required")
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ResourceStatus status = ResourceStatus.ACTIVE; // Default to ACTIVE
 
     @PositiveOrZero(message = "Capacity must be zero or positive")
     private Integer capacity;

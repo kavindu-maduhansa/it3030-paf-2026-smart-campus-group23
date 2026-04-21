@@ -15,6 +15,7 @@ export interface Resource {
   description?: string
   availabilityStart?: string
   availabilityEnd?: string
+  status?: 'ACTIVE' | 'OUT_OF_SERVICE'
 }
 
 export const getResources = () => apiClient.get<Resource[]>(API_URL)
@@ -25,12 +26,14 @@ export const getResourceById = (id: number) =>
 export interface FilterParams {
   type?: string
   location?: string
+  status?: string
 }
 
 export const filterResources = (params: FilterParams) => {
   const queryParams = new URLSearchParams()
   if (params.type) queryParams.append('type', params.type)
   if (params.location) queryParams.append('location', params.location)
+  if (params.status) queryParams.append('status', params.status)
   
   return apiClient.get<Resource[]>(`${API_URL}/filter?${queryParams.toString()}`)
 }
@@ -43,3 +46,6 @@ export const updateResource = (id: number, resource: Resource) =>
 
 export const deleteResource = (id: number) =>
   apiClient.delete(`${API_URL}/${id}`)
+
+export const toggleResourceStatus = (id: number) =>
+  apiClient.patch<Resource>(`${API_URL}/${id}/status`)
