@@ -2,7 +2,7 @@
 -- Run this script to create all tables in your existing database
 
 -- Use your existing database (provided by hosting service)
-USE sql12823602;
+USE sql12823862;
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
