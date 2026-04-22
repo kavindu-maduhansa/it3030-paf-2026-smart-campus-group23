@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AxiosError } from 'axios'
+import { Link } from 'react-router-dom'
 import { getResources, deleteResource, filterResources, toggleResourceStatus } from '../services/resourceService'
 import type { Resource, FilterParams } from '../services/resourceService'
 import type { ResourceEvent } from '../services/webSocketService'
@@ -87,7 +88,10 @@ const getAvailabilityBadgeStyle = (status: AvailabilityStatus) => {
 
 const ResourceList = () => {
   const { user, loading: authLoading } = useAuth()
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'TECHNICIAN'
+  const isAdmin = user?.role === 'ADMIN'
+  const isLecturer = user?.role === 'LECTURER'
+  const isStudent = user?.role === 'STUDENT'
+  const canBookResources = isLecturer || isStudent
   const [resources, setResources] = useState<Resource[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -261,11 +265,46 @@ const ResourceList = () => {
     )
   }
 
-  const filteredResources = resources.filter(
-    (resource) =>
+  const allowedLecturerTypes = new Set([
+    'LECTURE_HALL',
+    'LAB',
+    'COMPUTER_LAB',
+    'EQUIPMENT',
+    'MEETING_ROOM',
+    'LIBRARY',
+    'WORKSPACE',
+    'LIBRARY_WORKSPACE',
+  ])
+  const allowedStudentExactTypes = new Set(['MEETING_ROOM', 'LIBRARY', 'WORKSPACE', 'LIBRARY_WORKSPACE'])
+
+  const filteredResources = resources.filter((resource) => {
+    const matchesSearch =
       resource.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       resource.type.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+
+    if (!matchesSearch) {
+      return false
+    }
+
+    if (!isLecturer && !isStudent) {
+      return true
+    }
+
+    const normalizedType = resource.type.toUpperCase()
+    if (isLecturer) {
+      return (
+        allowedLecturerTypes.has(normalizedType) ||
+        normalizedType.includes('LIBRARY') ||
+        normalizedType.includes('WORKSPACE')
+      )
+    }
+
+    return (
+      allowedStudentExactTypes.has(normalizedType) ||
+      normalizedType.includes('LIBRARY') ||
+      normalizedType.includes('WORKSPACE')
+    )
+  })
 
   // Use refreshTime to trigger re-renders for availability updates (avoids stale status)
 
@@ -301,116 +340,105 @@ const ResourceList = () => {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-[#1F2937] bg-[#111827] shadow-xl shadow-black/40">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-[#1F2937] bg-[#1E293B]">
-                <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">
-                  Name
-                </th>
-                <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">
-                  Type
-                </th>
-                <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">
-                  Capacity
-                </th>
-                <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">
-                  Location
-                </th>
-                <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">
-                  Availability
-                </th>
-                <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">
-                  Status
-                </th>
-                {isAdmin && (
-                  <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">
-                    Actions
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#1F2937] text-[#CBD5E1]">
-              {filteredResources.length === 0 ? (
-                <tr>
-                  <td colSpan={isAdmin ? 7 : 6} className="px-5 py-16 text-center text-[#94A3B8]">
-                    No resources match your search.
-                  </td>
-                </tr>
-              ) : (
-                filteredResources.map((resource) => {
-                  const availabilityStatus = getAvailabilityStatus(resource)
-                  const badgeStyle = getAvailabilityBadgeStyle(availabilityStatus)
-                  const isActive = resource.status === 'ACTIVE'
-                  
-                  return (
-                    <tr
-                      key={`${resource.id}-${refreshTime}`}
-                      className="transition-colors hover:bg-[#3B82F6]/[0.08]"
-                    >
-                      <td className="px-5 py-4 font-medium text-white">{resource.name}</td>
-                      <td className="px-5 py-4">{resource.type}</td>
-                      <td className="px-5 py-4 tabular-nums">{resource.capacity}</td>
-                      <td className="px-5 py-4">{resource.location}</td>
-                      <td className="px-5 py-4">
-                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${badgeStyle.bg} ${badgeStyle.ring} ${badgeStyle.text}`}>
-                          {badgeStyle.label}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        {isAdmin ? (
-                          <button
-                            disabled={togglingId === resource.id}
-                            onClick={() => handleToggleStatus(resource.id)}
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 transition-all ${
-                              isActive
-                                ? 'bg-emerald-500/20 ring-emerald-500/35 text-emerald-300 hover:bg-emerald-500/30'
-                                : 'bg-orange-500/20 ring-orange-500/35 text-orange-300 hover:bg-orange-500/30'
-                            } disabled:opacity-50 cursor-pointer`}
-                          >
-                            {togglingId === resource.id ? 'Updating...' : isActive ? 'Active' : 'Out of Service'}
-                          </button>
-                        ) : (
-                          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
-                            isActive
-                              ? 'bg-emerald-500/20 ring-emerald-500/35 text-emerald-300'
-                              : 'bg-orange-500/20 ring-orange-500/35 text-orange-300'
-                          }`}>
-                            {isActive ? 'Active' : 'Out of Service'}
-                          </span>
-                        )}
-                      </td>
-                      {isAdmin && (
-                        <td className="px-5 py-4">
-                          <div className="flex gap-2">
-                            <button
-                              className="rounded-lg bg-[#3B82F6]/20 px-3 py-1.5 text-xs font-medium text-[#3B82F6] transition-all hover:bg-[#3B82F6]/30"
-                              onClick={() => {
-                                setSelectedResource(resource)
-                                setShowForm(true)
-                              }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              disabled={deletingId === resource.id}
-                              className="rounded-lg bg-[#EF4444]/20 px-3 py-1.5 text-xs font-medium text-[#F87171] transition-all hover:bg-[#EF4444]/30 disabled:opacity-50"
-                              onClick={() => handleDelete(resource.id)}
-                            >
-                              {deletingId === resource.id ? 'Deleting...' : 'Delete'}
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
+      {filteredResources.length === 0 ? (
+        <div className="rounded-2xl border border-[#1F2937] bg-[#111827] px-5 py-16 text-center text-[#94A3B8] shadow-xl shadow-black/40">
+          No resources match your search.
         </div>
-      </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {filteredResources.map((resource) => {
+            const availabilityStatus = getAvailabilityStatus(resource)
+            const badgeStyle = getAvailabilityBadgeStyle(availabilityStatus)
+            const isActive = resource.status === 'ACTIVE'
+
+            return (
+              <article
+                key={`${resource.id}-${refreshTime}`}
+                className="rounded-2xl border border-[#1F2937] bg-[#111827] p-5 shadow-xl shadow-black/40 transition-all hover:border-[#3B82F6]/35 hover:bg-[#0F172A]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-base font-semibold text-white">{resource.name}</h3>
+                  <span className="rounded-full bg-[#1E293B] px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#94A3B8]">
+                    {resource.type}
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-2 text-sm">
+                  <p className="text-[#CBD5E1]">
+                    <span className="text-[#94A3B8]">Capacity:</span>{' '}
+                    <span className="font-medium tabular-nums text-white">{resource.capacity ?? '-'}</span>
+                  </p>
+                  <p className="text-[#CBD5E1]">
+                    <span className="text-[#94A3B8]">Location:</span>{' '}
+                    <span className="font-medium text-white">{resource.location}</span>
+                  </p>
+                </div>
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${badgeStyle.bg} ${badgeStyle.ring} ${badgeStyle.text}`}>
+                    {badgeStyle.label}
+                  </span>
+
+                  {isAdmin ? (
+                    <button
+                      disabled={togglingId === resource.id}
+                      onClick={() => handleToggleStatus(resource.id)}
+                      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 transition-all ${
+                        isActive
+                          ? 'bg-emerald-500/20 ring-emerald-500/35 text-emerald-300 hover:bg-emerald-500/30'
+                          : 'bg-orange-500/20 ring-orange-500/35 text-orange-300 hover:bg-orange-500/30'
+                      } disabled:opacity-50`}
+                    >
+                      {togglingId === resource.id ? 'Updating...' : isActive ? 'Active' : 'Out of Service'}
+                    </button>
+                  ) : (
+                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
+                      isActive
+                        ? 'bg-emerald-500/20 ring-emerald-500/35 text-emerald-300'
+                        : 'bg-orange-500/20 ring-orange-500/35 text-orange-300'
+                    }`}>
+                      {isActive ? 'Active' : 'Out of Service'}
+                    </span>
+                  )}
+                </div>
+
+                {isAdmin && (
+                  <div className="mt-5 flex gap-2">
+                    <button
+                      className="rounded-lg bg-[#3B82F6]/20 px-3 py-1.5 text-xs font-medium text-[#3B82F6] transition-all hover:bg-[#3B82F6]/30"
+                      onClick={() => {
+                        setSelectedResource(resource)
+                        setShowForm(true)
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      disabled={deletingId === resource.id}
+                      className="rounded-lg bg-[#EF4444]/20 px-3 py-1.5 text-xs font-medium text-[#F87171] transition-all hover:bg-[#EF4444]/30 disabled:opacity-50"
+                      onClick={() => handleDelete(resource.id)}
+                    >
+                      {deletingId === resource.id ? 'Deleting...' : 'Delete'}
+                    </button>
+                  </div>
+                )}
+
+                {canBookResources && (
+                  <div className="mt-5">
+                    <Link
+                      to="/bookings"
+                      state={{ resourceId: resource.id, resourceName: resource.name }}
+                      className="inline-flex w-full items-center justify-center rounded-lg bg-[#3B82F6] px-3 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-500"
+                    >
+                      Book Now
+                    </Link>
+                  </div>
+                )}
+              </article>
+            )
+          })}
+        </div>
+      )}
 
       {showForm && (
         <ResourceFormModal
