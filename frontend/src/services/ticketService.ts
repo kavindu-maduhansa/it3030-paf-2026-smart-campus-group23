@@ -17,6 +17,10 @@ export interface TicketResponseDTO {
   priority: string
   status: string
   contactDetails: string
+  userId?: number
+  userName?: string
+  assignedToId?: number | null
+  assignedToName?: string | null
   resourceName?: string
   imageUrls: string[]
   createdAt: string

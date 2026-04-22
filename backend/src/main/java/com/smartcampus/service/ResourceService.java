@@ -22,6 +22,9 @@ public class ResourceService {
 
     @Autowired
     private ResourceRepository resourceRepository;
+    
+    @Autowired
+    private MongoResourceSyncService mongoResourceSyncService;
 
     /**
      * Get all resources
@@ -86,6 +89,7 @@ public class ResourceService {
      */
     public Resource createResource(Resource resource) {
         Resource saved = resourceRepository.save(resource);
+        mongoResourceSyncService.upsertResource(saved);
         // Broadcast event to all connected WebSocket clients
         ResourceEvent event = ResourceEvent.created(
             saved.getId(),
@@ -114,6 +118,7 @@ public class ResourceService {
         existing.setStatus(resourceDetails.getStatus());
         
         Resource updated = resourceRepository.save(existing);
+        mongoResourceSyncService.upsertResource(updated);
         
         // Broadcast event to all connected WebSocket clients
         ResourceEvent event = ResourceEvent.updated(
@@ -136,6 +141,7 @@ public class ResourceService {
         Resource existing = getResourceById(id);
         String name = existing.getName();
         resourceRepository.delete(existing);
+        mongoResourceSyncService.deleteResource(id);
         
         // Broadcast event to all connected WebSocket clients
         ResourceEvent event = ResourceEvent.deleted(id, name);
@@ -176,6 +182,7 @@ public class ResourceService {
         }
         
         Resource updated = resourceRepository.save(existing);
+        mongoResourceSyncService.upsertResource(updated);
         
         // Broadcast event to all connected WebSocket clients
         ResourceEvent event = ResourceEvent.updated(

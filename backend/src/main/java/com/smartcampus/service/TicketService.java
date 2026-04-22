@@ -32,6 +32,7 @@ public class TicketService {
     private final AttachmentRepository attachmentRepository;
     private final FileStorageService fileStorageService;
     private final UserRepository userRepository;
+    private final MongoTicketSyncService mongoTicketSyncService;
 
     @Transactional
     public TicketResponseDTO createTicket(TicketRequestDTO dto, User user, org.springframework.web.multipart.MultipartFile[] images) {
@@ -64,6 +65,7 @@ public class TicketService {
         }
 
         Ticket savedTicket = ticketRepository.save(ticket);
+        mongoTicketSyncService.upsertTicket(savedTicket);
 
         // Day 3: Handle attachments
         if (images != null && images.length > 0) {
@@ -153,6 +155,7 @@ public class TicketService {
         }
 
         Ticket updatedTicket = ticketRepository.save(ticket);
+        mongoTicketSyncService.upsertTicket(updatedTicket);
         return convertToResponseDTO(updatedTicket);
     }
 
@@ -178,6 +181,7 @@ public class TicketService {
         log.info("Ticket {} assigned to technician {}", ticketId, technician.getEmail());
         
         Ticket updatedTicket = ticketRepository.save(ticket);
+        mongoTicketSyncService.upsertTicket(updatedTicket);
         return convertToResponseDTO(updatedTicket);
     }
 
