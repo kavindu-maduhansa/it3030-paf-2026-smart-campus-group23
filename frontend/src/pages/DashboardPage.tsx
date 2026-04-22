@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../services/useAuth'
 import { DashboardDecor, featureCard, iconBase, tilePanel } from './dashboard/dashboardUi'
 import AdminPanels from './dashboard/panels/AdminPanels'
@@ -23,6 +24,18 @@ export default function DashboardPage() {
     { label: 'University email', value: user?.email?.trim() || '—' },
     { label: 'Member since', value: 'January 2026' },
   ] as const
+
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (campusRole === 'TECHNICIAN') {
+      navigate('/technician/dashboard', { replace: true })
+    }
+  }, [campusRole, navigate])
+
+  if (campusRole === 'TECHNICIAN') {
+    return null // Prevent flash of content before redirect
+  }
 
   return (
     <DashboardDecor>

@@ -81,8 +81,8 @@ export const ROLE_DASHBOARD: Record<CampusRole, RoleDashboardConfig> = {
       },
       {
         to: '/maintenance/report',
-        title: 'Report incident',
-        description: 'Notify maintenance about broken equipment or facility issues.',
+        title: 'Support & Tickets',
+        description: 'Report incidents and track your existing maintenance requests.',
         Icon: HiOutlineWrenchScrewdriver,
         iconClass: 'bg-violet-500/15 text-[#8B5CF6] ring-1 ring-violet-500/30',
       },
@@ -174,8 +174,8 @@ export const ROLE_DASHBOARD: Record<CampusRole, RoleDashboardConfig> = {
       },
       {
         to: '/maintenance/report',
-        title: 'Report incident',
-        description: 'Escalate projector, HVAC, or furniture issues in your venues.',
+        title: 'Support & Tickets',
+        description: 'Escalate venue issues and monitor repair progress.',
         Icon: HiOutlineWrenchScrewdriver,
         iconClass: 'bg-violet-500/15 text-[#8B5CF6] ring-1 ring-violet-500/30',
       },

@@ -10,7 +10,7 @@ export function getApiBaseUrl(): string {
   if (import.meta.env.DEV) {
     return ''
   }
-  return 'http://localhost:8080'
+  return 'http://localhost:8081'
 }
 
 /**
@@ -25,7 +25,6 @@ export function getOAuthBaseUrl(): string {
   if (direct != null && String(direct).trim() !== '') {
     return String(direct).replace(/\/$/, '')
   }
-  return 'http://localhost:8080'
 }
 
 export function getWebSocketResourcesUrl(): string {
