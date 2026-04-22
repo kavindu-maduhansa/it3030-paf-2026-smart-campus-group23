@@ -130,7 +130,7 @@ export default function MaintenanceSupportPage() {
             onClick={() => navigate('/dashboard')}
             className="rounded-lg border border-[#334155] px-4 py-2 text-sm font-semibold text-white hover:border-[#3B82F6]/50 transition-all"
           >
-            Dashboard
+            Back to Dashboard
           </button>
         }
       />

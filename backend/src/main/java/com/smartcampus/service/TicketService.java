@@ -119,6 +119,16 @@ public class TicketService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<TicketResponseDTO> getAssignedTickets(User technician) {
+        log.info("Fetching tickets assigned to technician: {}", technician.getEmail());
+        return ticketRepository.findByAssignedToId(technician.getId())
+                .stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(this::convertToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public TicketResponseDTO updateTicketStatus(Long id, TicketStatus status, User currentUser) {
         Ticket ticket = ticketRepository.findById(id)
@@ -192,6 +202,14 @@ public class TicketService {
             
             if (dto.getPriority() != null) {
                 ticket.setPriority(TicketPriority.valueOf(dto.getPriority().toUpperCase()));
+            }
+
+            if (dto.getStatus() != null) {
+                TicketStatus newStatus = TicketStatus.valueOf(dto.getStatus().toUpperCase());
+                if (ticket.getStatus() != newStatus) {
+                    // We reuse the updateTicketStatus logic for timestamps and rules
+                    updateTicketStatus(id, newStatus, currentUser);
+                }
             }
         }
 

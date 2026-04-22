@@ -66,6 +66,15 @@ public class TicketController {
         return ResponseEntity.ok(ticketService.getMyTickets(currentUser));
     }
 
+    @GetMapping("/assigned")
+    public ResponseEntity<List<TicketResponseDTO>> getAssignedTickets(
+            @AuthenticationPrincipal OAuth2User oauth2User,
+            HttpServletRequest request) {
+        
+        User currentUser = resolveUser(oauth2User, request);
+        return ResponseEntity.ok(ticketService.getAssignedTickets(currentUser));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<TicketResponseDTO> getTicketById(@PathVariable Long id) {
         return ResponseEntity.ok(ticketService.getTicketById(id));

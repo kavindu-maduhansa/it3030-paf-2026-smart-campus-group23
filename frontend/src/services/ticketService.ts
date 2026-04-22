@@ -7,6 +7,7 @@ export interface TicketRequestDTO {
   priority: string
   contactDetails?: string
   resourceId?: number
+  status?: string
   removedAttachmentIds?: number[]
 }
 
@@ -74,6 +75,9 @@ export const getTicketById = (id: number) =>
 
 export const getMyTickets = () =>
   apiClient.get<TicketResponseDTO[]>(`${API_URL}/my`)
+
+export const getAssignedTickets = () =>
+  apiClient.get<TicketResponseDTO[]>(`${API_URL}/assigned`)
 
 export const updateTicketStatus = (id: number, status: string) =>
   apiClient.patch<TicketResponseDTO>(`${API_URL}/${id}/status`, null, {

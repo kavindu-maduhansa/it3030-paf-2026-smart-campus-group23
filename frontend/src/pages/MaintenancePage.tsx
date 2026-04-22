@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { 
   HiOutlineWrenchScrewdriver, 
   HiOutlineEye, 
@@ -39,8 +39,9 @@ export default function MaintenancePage() {
   const authContext = useContext(AuthContext)
   const user = authContext?.user
   
+  const [searchParams] = useSearchParams()
   const [tickets, setTickets] = useState<TicketResponseDTO[]>([])
-  const [filter, setFilter] = useState<'all' | 'mine'>('all')
+  const [filter, setFilter] = useState<'all' | 'mine'>(searchParams.get('filter') === 'mine' ? 'mine' : 'all')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL')
@@ -56,6 +57,12 @@ export default function MaintenancePage() {
   useEffect(() => {
     fetchTickets()
   }, [])
+
+  useEffect(() => {
+    const q = searchParams.get('filter')
+    if (q === 'mine') setFilter('mine')
+    else if (q === 'all') setFilter('all')
+  }, [searchParams])
 
   const fetchTickets = async () => {
     setIsLoading(true)
@@ -155,20 +162,34 @@ export default function MaintenancePage() {
           title="Maintenance & tickets"
           subtitle="Prioritised work across campus. Hook this view to your tickets API and WebSocket stream."
           action={
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-3">
               <Link
-                to="/dashboard"
-                className="rounded-lg border border-[#334155] px-4 py-2 text-sm font-semibold text-white hover:border-[#3B82F6]/50"
+                to="/technician/dashboard"
+                className="rounded-lg border border-[#334155] px-4 py-2 text-sm font-semibold text-white hover:border-[#3B82F6]/50 transition-all hover:bg-white/5"
               >
-                Dashboard
+                Back to Dashboard
               </Link>
-              <Link
-                to="/maintenance/report"
-                className="inline-flex items-center gap-2 rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 active:scale-95"
-              >
-                <HiOutlineWrenchScrewdriver className="h-4 w-4" />
-                New ticket
-              </Link>
+
+              {filter === 'all' && (
+                <div className="flex rounded-xl border border-[#1F2937] bg-[#111827] p-1">
+                  <button
+                    onClick={() => setFilter('all')}
+                    className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
+                      filter === 'all' ? 'bg-[#3B82F6] text-white shadow-lg' : 'text-[#64748B] hover:text-white'
+                    }`}
+                  >
+                    All Tickets
+                  </button>
+                  <button
+                    onClick={() => setFilter('mine')}
+                    className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
+                      filter === 'mine' ? 'bg-[#3B82F6] text-white shadow-lg' : 'text-[#64748B] hover:text-white'
+                    }`}
+                  >
+                    My Queue
+                  </button>
+                </div>
+              )}
             </div>
           }
         />
@@ -187,103 +208,87 @@ export default function MaintenancePage() {
               />
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Queue Filter */}
-              <div className="flex rounded-xl border border-[#1F2937] bg-[#111827] p-1">
-                <button
-                  onClick={() => setFilter('all')}
-                  className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
-                    filter === 'all' ? 'bg-[#3B82F6] text-white shadow-lg' : 'text-[#64748B] hover:text-white'
-                  }`}
-                >
-                  All Tickets
-                </button>
-                <button
-                  onClick={() => setFilter('mine')}
-                  className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
-                    filter === 'mine' ? 'bg-[#3B82F6] text-white shadow-lg' : 'text-[#64748B] hover:text-white'
-                  }`}
-                >
-                  My Queue
-                </button>
-              </div>
+            {filter === 'all' && (
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Status Filter */}
+                <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
+                  <span className="text-[10px] font-bold uppercase text-[#475569]">Status</span>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
+                  >
+                    <option value="ALL" className="bg-[#0F172A] text-white">All</option>
+                    <option value="OPEN" className="bg-[#0F172A] text-white">Open</option>
+                    <option value="IN_PROGRESS" className="bg-[#0F172A] text-white">In Progress</option>
+                    <option value="RESOLVED" className="bg-[#0F172A] text-white">Resolved</option>
+                    <option value="CLOSED" className="bg-[#0F172A] text-white">Closed</option>
+                  </select>
+                </div>
 
-              {/* Status Filter */}
-              <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
-                <span className="text-[10px] font-bold uppercase text-[#475569]">Status</span>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
-                >
-                  <option value="ALL" className="bg-[#0F172A] text-white">All</option>
-                  <option value="OPEN" className="bg-[#0F172A] text-white">Open</option>
-                  <option value="IN_PROGRESS" className="bg-[#0F172A] text-white">In Progress</option>
-                  <option value="RESOLVED" className="bg-[#0F172A] text-white">Resolved</option>
-                  <option value="CLOSED" className="bg-[#0F172A] text-white">Closed</option>
-                </select>
-              </div>
+                {/* Priority Filter */}
+                <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
+                  <span className="text-[10px] font-bold uppercase text-[#475569]">Priority</span>
+                  <select
+                    value={priorityFilter}
+                    onChange={(e) => setPriorityFilter(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
+                  >
+                    <option value="ALL" className="bg-[#0F172A] text-white">All</option>
+                    <option value="LOW" className="bg-[#0F172A] text-white">Low</option>
+                    <option value="MEDIUM" className="bg-[#0F172A] text-white">Medium</option>
+                    <option value="HIGH" className="bg-[#0F172A] text-white">High</option>
+                    <option value="URGENT" className="bg-[#0F172A] text-white">Urgent</option>
+                  </select>
+                </div>
 
-              {/* Priority Filter */}
-              <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
-                <span className="text-[10px] font-bold uppercase text-[#475569]">Priority</span>
-                <select
-                  value={priorityFilter}
-                  onChange={(e) => setPriorityFilter(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
-                >
-                  <option value="ALL" className="bg-[#0F172A] text-white">All</option>
-                  <option value="LOW" className="bg-[#0F172A] text-white">Low</option>
-                  <option value="MEDIUM" className="bg-[#0F172A] text-white">Medium</option>
-                  <option value="HIGH" className="bg-[#0F172A] text-white">High</option>
-                  <option value="URGENT" className="bg-[#0F172A] text-white">Urgent</option>
-                </select>
+                {/* Category Filter */}
+                <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
+                  <span className="text-[10px] font-bold uppercase text-[#475569]">Category</span>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
+                  >
+                    <option value="ALL" className="bg-[#0F172A] text-white">All</option>
+                    {CATEGORIES.map(cat => (
+                      <option key={cat} value={cat} className="bg-[#0F172A] text-white">
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
+            )}
+          </div>
+        </div>
 
-              {/* Category Filter */}
-              <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
-                <span className="text-[10px] font-bold uppercase text-[#475569]">Category</span>
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
-                >
-                  <option value="ALL" className="bg-[#0F172A] text-white">All</option>
-                  {CATEGORIES.map(cat => (
-                    <option key={cat} value={cat} className="bg-[#0F172A] text-white">
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        {filter === 'all' && (
+          <div className="mt-8 grid gap-4 sm:grid-cols-4">
+            <div className={tilePanel}>
+              <p className="text-xs font-semibold uppercase text-[#94A3B8]">Total Tickets</p>
+              <p className="mt-2 text-2xl font-bold text-white">{tickets.length}</p>
+            </div>
+            <div className={tilePanel}>
+              <p className="text-xs font-semibold uppercase text-[#94A3B8]">Open</p>
+              <p className="mt-2 text-2xl font-bold text-orange-400">
+                {tickets.filter(t => t.status === 'OPEN').length}
+              </p>
+            </div>
+            <div className={tilePanel}>
+              <p className="text-xs font-semibold uppercase text-[#94A3B8]">In Progress</p>
+              <p className="mt-2 text-2xl font-bold text-blue-400">
+                {tickets.filter(t => t.status === 'IN_PROGRESS').length}
+              </p>
+            </div>
+            <div className={tilePanel}>
+              <p className="text-xs font-semibold uppercase text-[#94A3B8]">Resolved</p>
+              <p className="mt-2 text-2xl font-bold text-emerald-400">
+                {tickets.filter(t => t.status === 'RESOLVED').length}
+              </p>
             </div>
           </div>
-        </div>
-
-        <div className="mt-8 grid gap-4 sm:grid-cols-4">
-          <div className={tilePanel}>
-            <p className="text-xs font-semibold uppercase text-[#94A3B8]">Total Tickets</p>
-            <p className="mt-2 text-2xl font-bold text-white">{tickets.length}</p>
-          </div>
-          <div className={tilePanel}>
-            <p className="text-xs font-semibold uppercase text-[#94A3B8]">Open</p>
-            <p className="mt-2 text-2xl font-bold text-orange-400">
-              {tickets.filter(t => t.status === 'OPEN').length}
-            </p>
-          </div>
-          <div className={tilePanel}>
-            <p className="text-xs font-semibold uppercase text-[#94A3B8]">In Progress</p>
-            <p className="mt-2 text-2xl font-bold text-blue-400">
-              {tickets.filter(t => t.status === 'IN_PROGRESS').length}
-            </p>
-          </div>
-          <div className={tilePanel}>
-            <p className="text-xs font-semibold uppercase text-[#94A3B8]">Resolved</p>
-            <p className="mt-2 text-2xl font-bold text-emerald-400">
-              {tickets.filter(t => t.status === 'RESOLVED').length}
-            </p>
-          </div>
-        </div>
+        )}
 
         <ul className="mt-8 space-y-4">
           {isLoading ? (
