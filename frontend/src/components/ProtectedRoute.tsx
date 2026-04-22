@@ -3,10 +3,11 @@ import { useAuth } from '../services/useAuth'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
+  requiredRole?: string
 }
 
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { isAuthenticated, loading } = useAuth()
+const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
+  const { isAuthenticated, loading, user } = useAuth()
 
   if (loading) {
     return (
@@ -26,6 +27,11 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
+  }
+
+  if (requiredRole && user?.role !== requiredRole) {
+    console.warn(`[ProtectedRoute] Access denied: Required role ${requiredRole}, but user has ${user?.role}`)
+    return <Navigate to="/dashboard" replace />
   }
 
   return <>{children}</>

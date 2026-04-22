@@ -59,6 +59,9 @@ export const getAllTickets = (params?: { status?: string; priority?: string }) =
 export const getTicketById = (id: number) =>
   apiClient.get<TicketResponseDTO>(`${API_URL}/${id}`)
 
+export const getMyTickets = () =>
+  apiClient.get<TicketResponseDTO[]>(`${API_URL}/my`)
+
 export const updateTicketStatus = (id: number, status: string) =>
   apiClient.patch<TicketResponseDTO>(`${API_URL}/${id}/status`, null, {
     params: { status },

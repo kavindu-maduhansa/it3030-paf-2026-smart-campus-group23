@@ -57,6 +57,15 @@ public class TicketController {
         return ResponseEntity.ok(tickets);
     }
 
+    @GetMapping("/my")
+    public ResponseEntity<List<TicketResponseDTO>> getMyTickets(
+            @AuthenticationPrincipal OAuth2User oauth2User,
+            HttpServletRequest request) {
+        
+        User currentUser = resolveUser(oauth2User, request);
+        return ResponseEntity.ok(ticketService.getMyTickets(currentUser));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<TicketResponseDTO> getTicketById(@PathVariable Long id) {
         return ResponseEntity.ok(ticketService.getTicketById(id));
