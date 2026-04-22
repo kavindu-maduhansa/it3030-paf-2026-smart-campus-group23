@@ -22,12 +22,7 @@ const CATEGORIES = [
   'HVAC / Air Con', 'Furniture', 'Janitorial', 'Other'
 ]
 
-const PRIORITIES = [
-  { value: 'LOW', label: 'Low', color: 'text-slate-400 bg-slate-500/10' },
-  { value: 'MEDIUM', label: 'Medium', color: 'text-amber-400 bg-amber-500/10' },
-  { value: 'HIGH', label: 'High', color: 'text-orange-400 bg-orange-500/10' },
-  { value: 'URGENT', label: 'Urgent', color: 'text-red-400 bg-red-500/10' }
-]
+
 
 export default function MaintenanceSupportPage() {
   const navigate = useNavigate()
@@ -187,17 +182,17 @@ export default function MaintenanceSupportPage() {
               <div className={panelLg}>
                 <div className="grid gap-6 sm:grid-cols-2">
                   <div className="sm:col-span-2">
-                    <label className="block text-sm font-semibold text-white">Issue Summary</label>
+                    <label className="block text-sm font-semibold text-white">Title</label>
                     <input
                       required
                       type="text"
-                      placeholder="Briefly describe the problem"
+                      placeholder="Enter a descriptive title for this incident"
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                       className="mt-2 h-11 w-full rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 text-white placeholder:text-[#475569] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]"
                     />
                   </div>
-                  <div>
+                  <div className="sm:col-span-2">
                     <label className="block text-sm font-semibold text-white">Category</label>
                     <select
                       required
@@ -208,23 +203,6 @@ export default function MaintenanceSupportPage() {
                       <option value="">Select Category</option>
                       {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                     </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-white">Priority Level</label>
-                    <div className="mt-2 flex gap-2">
-                      {PRIORITIES.map(p => (
-                        <button
-                          key={p.value}
-                          type="button"
-                          onClick={() => setFormData({ ...formData, priority: p.value })}
-                          className={`flex-1 rounded-lg px-2 py-2 text-[10px] font-bold transition-all ${
-                            formData.priority === p.value ? p.color : 'bg-[#1F2937] text-[#64748B] opacity-50 hover:opacity-100'
-                          }`}
-                        >
-                          {p.label.toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 </div>
               </div>

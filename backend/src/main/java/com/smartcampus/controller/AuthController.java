@@ -68,6 +68,7 @@ public class AuthController {
             if (sessionUser != null) {
                 log.info("[Get User] Returning session user: {} with role: {}", sessionUser.getEmail(), sessionUser.getRole());
                 response.put("authenticated", true);
+                response.put("id", sessionUser.getId());
                 response.put("name", sessionUser.getName());
                 response.put("email", sessionUser.getEmail());
                 response.put("role",
@@ -98,7 +99,13 @@ public class AuthController {
         response.put("email", principal.getAttribute("email"));
         response.put("picture", principal.getAttribute("picture"));
         response.put("role", role);
-        // Do not put principal.getAttributes() — nested provider objects often break Jackson (HTTP 500).
+        
+        // Fetch user from DB to get the ID for OAuth2 users
+        String email = principal.getAttribute("email");
+        if (email != null) {
+            User user = userService.findOrCreateUser(email, (String) principal.getAttribute("name"), "google");
+            response.put("id", user.getId());
+        }
 
         return ResponseEntity.ok(response);
     }
@@ -207,6 +214,7 @@ public class AuthController {
 
     private static Map<String, Object> authSuccessBody(User user, String message) {
         Map<String, Object> body = new HashMap<>();
+        body.put("id", user.getId());
         body.put("email", Objects.toString(user.getEmail(), ""));
         body.put("name", Objects.toString(user.getName(), ""));
         Role role = user.getRole();

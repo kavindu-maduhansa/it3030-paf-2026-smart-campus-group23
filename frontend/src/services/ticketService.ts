@@ -7,6 +7,13 @@ export interface TicketRequestDTO {
   priority: string
   contactDetails?: string
   resourceId?: number
+  removedAttachmentIds?: number[]
+}
+
+export interface AttachmentDTO {
+  id: number
+  url: string
+  name: string
 }
 
 export interface TicketResponseDTO {
@@ -24,6 +31,7 @@ export interface TicketResponseDTO {
   resourceName?: string
   location?: string
   imageUrls: string[]
+  attachments?: AttachmentDTO[]
   createdAt: string
   updatedAt: string
 }
@@ -72,10 +80,33 @@ export const updateTicketStatus = (id: number, status: string) =>
     params: { status },
   })
 
+export const updateTicket = async (id: number, ticketData: Partial<TicketRequestDTO>, images?: File[]): Promise<TicketResponseDTO> => {
+  const formData = new FormData()
+  
+  // Append ticket data as a JSON blob to match @RequestPart in Spring Boot
+  formData.append('ticket', new Blob([JSON.stringify(ticketData)], { type: 'application/json' }))
+  
+  if (images && images.length > 0) {
+    images.forEach((image) => {
+      formData.append('images', image)
+    })
+  }
+
+  const response = await apiClient.post<TicketResponseDTO>(`${API_URL}/${id}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+  return response.data
+}
+
 export const assignTechnician = (id: number, technicianId: number) =>
   apiClient.patch<TicketResponseDTO>(`${API_URL}/${id}/assign`, null, {
     params: { technicianId },
   })
+
+export const selfAssign = (id: number) =>
+  apiClient.patch<TicketResponseDTO>(`${API_URL}/${id}/self-assign`)
 
 export const getComments = (ticketId: number) =>
   apiClient.get<CommentResponseDTO[]>(`${API_URL}/${ticketId}/comments`)

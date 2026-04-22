@@ -4,6 +4,7 @@ import { apiClient } from './axiosConfig'
 const API_URL = '/api/auth'
 
 export interface User {
+  id: number
   name: string
   email: string
   picture?: string

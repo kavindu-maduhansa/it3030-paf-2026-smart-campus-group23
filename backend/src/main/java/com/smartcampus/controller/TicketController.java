@@ -83,6 +83,19 @@ public class TicketController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/{id}")
+    public ResponseEntity<TicketResponseDTO> updateTicket(
+            @PathVariable Long id,
+            @Valid @RequestPart("ticket") TicketRequestDTO ticketRequestDTO,
+            @RequestPart(value = "images", required = false) org.springframework.web.multipart.MultipartFile[] images,
+            @AuthenticationPrincipal OAuth2User oauth2User,
+            HttpServletRequest request) {
+        
+        User currentUser = resolveUser(oauth2User, request);
+        TicketResponseDTO response = ticketService.updateTicket(id, ticketRequestDTO, currentUser, images);
+        return ResponseEntity.ok(response);
+    }
+
     @PatchMapping("/{id}/assign")
     public ResponseEntity<TicketResponseDTO> assignTechnician(
             @PathVariable Long id,
@@ -92,6 +105,17 @@ public class TicketController {
         
         User currentUser = resolveUser(oauth2User, request);
         TicketResponseDTO response = ticketService.assignTechnician(id, technicianId, currentUser);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/self-assign")
+    public ResponseEntity<TicketResponseDTO> selfAssign(
+            @PathVariable Long id,
+            @AuthenticationPrincipal OAuth2User oauth2User,
+            HttpServletRequest request) {
+        
+        User currentUser = resolveUser(oauth2User, request);
+        TicketResponseDTO response = ticketService.assignTechnician(id, currentUser.getId(), currentUser);
         return ResponseEntity.ok(response);
     }
 

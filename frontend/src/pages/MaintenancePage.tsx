@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { 
   HiOutlineWrenchScrewdriver, 
@@ -10,14 +10,25 @@ import {
   HiOutlineExclamationTriangle,
   HiOutlineMapPin,
   HiOutlineClock,
-  HiOutlineUser
+  HiOutlineUser,
+  HiOutlineUserPlus,
+  HiOutlineMagnifyingGlass,
+  HiOutlineFunnel
 } from 'react-icons/hi2'
+import { AuthContext } from '../services/AuthContext'
+
+const CATEGORIES = [
+  'Electrical', 'Plumbing', 'IT & Network', 'AV & Projector', 
+  'HVAC / Air Con', 'Furniture', 'Janitorial', 'Other'
+]
 import { Pill, SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
 import CommentSection from '../components/CommentSection'
 import { 
   getAllTickets, 
-  updateTicketStatus, 
+  updateTicketStatus,
+  updateTicket,
   deleteTicket,
+  selfAssign,
   type TicketResponseDTO 
 } from '../services/ticketService'
 import { formatDistanceToNow } from 'date-fns'
@@ -25,8 +36,16 @@ import { formatDistanceToNow } from 'date-fns'
 
 
 export default function MaintenancePage() {
+  const authContext = useContext(AuthContext)
+  const user = authContext?.user
+  
   const [tickets, setTickets] = useState<TicketResponseDTO[]>([])
-  const [filter, setFilter] = useState<'all' | 'high' | 'mine'>('all')
+  const [filter, setFilter] = useState<'all' | 'mine'>('all')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('ALL')
+  const [priorityFilter, setPriorityFilter] = useState<string>('ALL')
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
+  
   const [activeModal, setActiveModal] = useState<'view' | 'edit' | 'delete' | null>(null)
   const [selectedTicket, setSelectedTicket] = useState<TicketResponseDTO | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -50,12 +69,23 @@ export default function MaintenancePage() {
     }
   }
 
-  const list =
-    filter === 'high'
-      ? tickets.filter((t) => t.priority === 'HIGH' || t.priority === 'URGENT')
-      : filter === 'mine'
-        ? tickets.filter((t) => t.assignedToName?.includes('Tech')) // Demo logic for "mine"
-        : tickets
+  const list = tickets.filter((t) => {
+    const matchesSearch = searchTerm === '' || 
+      t.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      t.description.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter
+    const matchesPriority = priorityFilter === 'ALL' || t.priority === priorityFilter
+    const matchesCategory = categoryFilter === 'ALL' || t.category === categoryFilter
+    
+    let matchesQueue = true
+    if (filter === 'mine') {
+       // Using == for loose comparison in case of string/number mismatch from different providers
+       matchesQueue = t.assignedToId != null && user?.id != null && String(t.assignedToId) === String(user.id)
+    }
+
+    return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesQueue
+  })
 
   const handleOpenModal = (type: 'view' | 'edit' | 'delete', ticket: TicketResponseDTO) => {
     setSelectedTicket(ticket)
@@ -71,11 +101,25 @@ export default function MaintenancePage() {
   const handleUpdateTicket = async () => {
     if (!selectedTicket || !editForm.status) return
     try {
-      await updateTicketStatus(selectedTicket.id, editForm.status)
+      // First update status if it changed
+      if (editForm.status !== selectedTicket.status) {
+        await updateTicketStatus(selectedTicket.id, editForm.status)
+      }
+      
+      // Then update other fields (title, description, category, priority are required by DTO)
+      await updateTicket(selectedTicket.id, {
+        title: editForm.title || selectedTicket.title,
+        description: editForm.description || selectedTicket.description,
+        category: editForm.category || selectedTicket.category,
+        priority: editForm.priority || selectedTicket.priority,
+        contactDetails: editForm.contactDetails,
+        resourceId: editForm.resourceId
+      })
+      
       await fetchTickets()
       handleCloseModal()
     } catch (err) {
-      console.error('Failed to update ticket status', err)
+      console.error('Failed to update ticket', err)
       alert('Error updating ticket. Check console for details.')
     }
   }
@@ -89,6 +133,16 @@ export default function MaintenancePage() {
     } catch (err) {
       console.error('Failed to delete ticket', err)
       alert('Error deleting ticket. Check console for details.')
+    }
+  }
+
+  const handleSelfAssign = async (ticketId: number) => {
+    try {
+      await selfAssign(ticketId)
+      await fetchTickets()
+    } catch (err) {
+      console.error('Failed to self-assign ticket', err)
+      alert('Error assigning ticket. Check console for details.')
     }
   }
 
@@ -119,30 +173,94 @@ export default function MaintenancePage() {
           }
         />
 
-        <div className="mt-6 flex flex-wrap gap-2">
-          {(
-            [
-              ['all', 'All open'],
-              ['high', 'High priority'],
-              ['mine', 'My queue'],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setFilter(key)}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                filter === key
-                  ? 'bg-[#3B82F6] text-white'
-                  : 'border border-[#334155] text-[#94A3B8] hover:border-[#3B82F6]/40 hover:text-white'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="mt-8 rounded-2xl border border-[#1F2937] bg-[#0F172A] p-4 shadow-xl">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+            {/* Search */}
+            <div className="relative flex-1">
+              <HiOutlineMagnifyingGlass className="absolute left-3 top-3 h-5 w-5 text-[#475569]" />
+              <input
+                type="text"
+                placeholder="Search tickets..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-11 w-full rounded-xl border border-[#1F2937] bg-[#111827] pl-10 pr-4 text-white placeholder:text-[#475569] focus:border-[#3B82F6] focus:outline-none"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Queue Filter */}
+              <div className="flex rounded-xl border border-[#1F2937] bg-[#111827] p-1">
+                <button
+                  onClick={() => setFilter('all')}
+                  className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
+                    filter === 'all' ? 'bg-[#3B82F6] text-white shadow-lg' : 'text-[#64748B] hover:text-white'
+                  }`}
+                >
+                  All Tickets
+                </button>
+                <button
+                  onClick={() => setFilter('mine')}
+                  className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
+                    filter === 'mine' ? 'bg-[#3B82F6] text-white shadow-lg' : 'text-[#64748B] hover:text-white'
+                  }`}
+                >
+                  My Queue
+                </button>
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
+                <span className="text-[10px] font-bold uppercase text-[#475569]">Status</span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL" className="bg-[#0F172A] text-white">All</option>
+                  <option value="OPEN" className="bg-[#0F172A] text-white">Open</option>
+                  <option value="IN_PROGRESS" className="bg-[#0F172A] text-white">In Progress</option>
+                  <option value="RESOLVED" className="bg-[#0F172A] text-white">Resolved</option>
+                  <option value="CLOSED" className="bg-[#0F172A] text-white">Closed</option>
+                </select>
+              </div>
+
+              {/* Priority Filter */}
+              <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
+                <span className="text-[10px] font-bold uppercase text-[#475569]">Priority</span>
+                <select
+                  value={priorityFilter}
+                  onChange={(e) => setPriorityFilter(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL" className="bg-[#0F172A] text-white">All</option>
+                  <option value="LOW" className="bg-[#0F172A] text-white">Low</option>
+                  <option value="MEDIUM" className="bg-[#0F172A] text-white">Medium</option>
+                  <option value="HIGH" className="bg-[#0F172A] text-white">High</option>
+                  <option value="URGENT" className="bg-[#0F172A] text-white">Urgent</option>
+                </select>
+              </div>
+
+              {/* Category Filter */}
+              <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
+                <span className="text-[10px] font-bold uppercase text-[#475569]">Category</span>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL" className="bg-[#0F172A] text-white">All</option>
+                  {CATEGORIES.map(cat => (
+                    <option key={cat} value={cat} className="bg-[#0F172A] text-white">
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-4">
+        <div className="mt-8 grid gap-4 sm:grid-cols-4">
           <div className={tilePanel}>
             <p className="text-xs font-semibold uppercase text-[#94A3B8]">Total Tickets</p>
             <p className="mt-2 text-2xl font-bold text-white">{tickets.length}</p>
@@ -227,6 +345,15 @@ export default function MaintenancePage() {
                     </Pill>
                     
                     <div className="ml-2 flex items-center gap-1">
+                      {!t.assignedToId && (user?.role === 'TECHNICIAN' || user?.role === 'ADMIN') && (
+                        <button 
+                          onClick={() => handleSelfAssign(t.id)}
+                          className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#334155] hover:text-emerald-400 transition-all"
+                          title="Self-Assign"
+                        >
+                          <HiOutlineUserPlus className="h-5 w-5" />
+                        </button>
+                      )}
                       <button 
                         onClick={() => handleOpenModal('view', t)}
                         className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#334155] hover:text-[#3B82F6] transition-all"
