@@ -53,4 +53,17 @@ public class MongoTicketSyncService {
             log.warn("Mongo upsert failed for ticket {}: {}", ticket.getId(), ex.getMessage());
         }
     }
+
+    public void deleteTicket(Long id) {
+        if (!autoSyncEnabled || mongoUri == null || mongoUri.isBlank() || id == null) {
+            return;
+        }
+
+        try {
+            Query query = Query.query(Criteria.where("_id").is(String.valueOf(id)));
+            mongoTemplate.remove(query, "tickets");
+        } catch (Exception ex) {
+            log.warn("Mongo delete failed for ticket {}: {}", id, ex.getMessage());
+        }
+    }
 }

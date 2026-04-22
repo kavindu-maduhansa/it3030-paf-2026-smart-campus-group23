@@ -80,6 +80,7 @@ public class TicketService {
                     attachment.setFileType(image.getContentType());
                     attachment.setFileSize(image.getSize());
                     
+                    savedTicket.getAttachments().add(attachment);
                     attachmentRepository.save(attachment);
                 }
             }
@@ -185,11 +186,33 @@ public class TicketService {
         return convertToResponseDTO(updatedTicket);
     }
 
+    @Transactional
+    public void deleteTicket(Long id, User currentUser) {
+        Ticket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + id));
+
+        log.info("Delete request for ticket {} by user {}", id, currentUser.getEmail());
+
+        // Only admins or the original reporter can delete tickets
+        if (currentUser.getRole() != com.smartcampus.security.Role.ADMIN && 
+            !ticket.getUser().getId().equals(currentUser.getId())) {
+            throw new org.springframework.security.access.AccessDeniedException("Only admins or the ticket owner can delete a ticket");
+        }
+
+        ticketRepository.delete(ticket);
+        mongoTicketSyncService.deleteTicket(id);
+        log.info("Ticket {} deleted successfully", id);
+    }
+
     @Transactional(readOnly = true)
     public TicketResponseDTO getTicketById(Long id) {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + id));
         return convertToResponseDTO(ticket);
+    }
+
+    public org.springframework.core.io.Resource loadTicketImage(String filename) {
+        return fileStorageService.loadFileAsResource(filename);
     }
 
     public TicketResponseDTO convertToResponseDTO(Ticket ticket) {
@@ -213,6 +236,10 @@ public class TicketService {
                 .closedAt(ticket.getClosedAt())
                 .createdAt(ticket.getCreatedAt())
                 .updatedAt(ticket.getUpdatedAt())
+                .imageUrls(ticket.getAttachments().stream()
+                        .peek(a -> log.info("Mapping attachment {} for ticket {}", a.getFilePath(), ticket.getId()))
+                        .map(attachment -> "/api/tickets/images/" + attachment.getFilePath())
+                        .collect(Collectors.toList()))
                 .build();
     }
 }

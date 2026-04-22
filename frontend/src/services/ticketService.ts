@@ -22,6 +22,7 @@ export interface TicketResponseDTO {
   assignedToId?: number | null
   assignedToName?: string | null
   resourceName?: string
+  location?: string
   imageUrls: string[]
   createdAt: string
   updatedAt: string
@@ -81,3 +82,6 @@ export const getComments = (ticketId: number) =>
 
 export const addComment = (ticketId: number, content: string) =>
   apiClient.post<CommentResponseDTO>(`${API_URL}/${ticketId}/comments`, { content })
+
+export const deleteTicket = (id: number) =>
+  apiClient.delete(`${API_URL}/${id}`)

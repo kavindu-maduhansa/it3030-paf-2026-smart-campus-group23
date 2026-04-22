@@ -117,6 +117,40 @@ public class TicketController {
                 .body(commentService.addComment(id, commentRequestDTO, currentUser));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTicket(
+            @PathVariable Long id,
+            @AuthenticationPrincipal OAuth2User oauth2User,
+            HttpServletRequest request) {
+        
+        User currentUser = resolveUser(oauth2User, request);
+        ticketService.deleteTicket(id, currentUser);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/images/{filename:.+}")
+    public ResponseEntity<org.springframework.core.io.Resource> getTicketImage(@PathVariable String filename) {
+        org.springframework.core.io.Resource file = ticketService.loadTicketImage(filename);
+        
+        String contentType = "application/octet-stream";
+        try {
+            if (filename.toLowerCase().endsWith(".jpg") || filename.toLowerCase().endsWith(".jpeg")) {
+                contentType = "image/jpeg";
+            } else if (filename.toLowerCase().endsWith(".png")) {
+                contentType = "image/png";
+            } else if (filename.toLowerCase().endsWith(".gif")) {
+                contentType = "image/gif";
+            }
+        } catch (Exception e) {
+            // Fallback to octet-stream
+        }
+
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.parseMediaType(contentType))
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getFilename() + "\"")
+                .body(file);
+    }
+
     /**
      * Resolves the User entity from the current authentication context (OAuth2 or Session)
      */

@@ -3,9 +3,7 @@ import {
   HiOutlineBolt,
   HiOutlineClipboardDocumentList,
   HiOutlineCpuChip,
-  HiOutlineExclamationTriangle,
   HiOutlineMapPin,
-  HiOutlineWrenchScrewdriver,
   HiOutlineBellAlert,
   HiOutlineChartBar,
 } from 'react-icons/hi2'

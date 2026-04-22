@@ -33,4 +33,5 @@ public class TicketResponseDTO {
     private LocalDateTime closedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private java.util.List<String> imageUrls;
 }
