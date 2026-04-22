@@ -22,8 +22,9 @@ public class SmartCampusBackendApplication {
 
 	/**
 	 * If the active profile contains {@code dev} and the configured default port is 8080 but
-	 * something else is already listening there, switch to 8081 so {@code mvnw spring-boot:run}
-	 * does not fail when a previous JVM is still running.
+	 * something else is already listening there, switch to the first free port in a local
+	 * fallback range so {@code mvnw spring-boot:run} does not fail when previous JVMs are still
+	 * running.
 	 */
 	private static void maybeUseAlternatePortIfDefaultBusy() {
 		String profiles = System.getProperty("spring.profiles.active", "");
@@ -39,10 +40,27 @@ public class SmartCampusBackendApplication {
 		try (ServerSocket ignored = new ServerSocket(8080)) {
 			// port free
 		} catch (IOException e) {
-			System.setProperty("PORT", "8081");
-			System.err.println("[smart-campus] Port 8080 is in use; using PORT=8081 (dev). "
-					+ "Point Vite VITE_BACKEND_ORIGIN at 8081 or use backend/run-backend.ps1.");
+			int fallbackPort = findAvailablePort(8081, 20);
+			if (fallbackPort == -1) {
+				System.err.println("[smart-campus] Port 8080 is busy and no free fallback port was found in 8081-8100.");
+				return;
+			}
+			System.setProperty("PORT", Integer.toString(fallbackPort));
+			System.err.println("[smart-campus] Port 8080 is in use; using PORT=" + fallbackPort + " (dev). "
+					+ "Point Vite VITE_BACKEND_ORIGIN at the selected port or use backend/run-backend.ps1.");
 		}
+	}
+
+	private static int findAvailablePort(int startPort, int attempts) {
+		for (int i = 0; i < attempts; i++) {
+			int candidate = startPort + i;
+			try (ServerSocket ignored = new ServerSocket(candidate)) {
+				return candidate;
+			} catch (IOException ignored) {
+				// continue scanning
+			}
+		}
+		return -1;
 	}
 
 	private static String firstNonBlank(String a, String b, String fallback) {

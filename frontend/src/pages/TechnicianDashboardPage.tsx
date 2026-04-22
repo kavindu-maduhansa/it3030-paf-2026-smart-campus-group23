@@ -1,23 +1,16 @@
 import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
 import {
   HiOutlineBolt,
   HiOutlineClipboardDocumentList,
   HiOutlineCpuChip,
-  HiOutlineExclamationTriangle,
   HiOutlineMapPin,
-  HiOutlineWrenchScrewdriver,
   HiOutlineBellAlert,
   HiOutlineChartBar,
 } from 'react-icons/hi2'
 import { DashboardDecor, KpiMini, Pill, SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
 import { useAuth } from '../services/useAuth'
-
-const activeWorkQueue = [
-  { id: 'TK-1842', title: 'Projector flicker · Hall A', priority: 'high' as const, status: 'IN_PROGRESS', due: 'Today 16:00' },
-  { id: 'TK-1839', title: 'HVAC noise · Bldg B L2', priority: 'medium' as const, status: 'OPEN', due: 'Tomorrow' },
-  { id: 'TK-1835', title: 'Lab PC 7 disk warning', priority: 'low' as const, status: 'OPEN', due: 'Fri' },
-  { id: 'TK-1821', title: 'Network drop · Lab 5', priority: 'high' as const, status: 'IN_PROGRESS', due: '2h ago' },
-]
+import { getAllTickets, type TicketResponseDTO } from '../services/ticketService'
 
 const equipmentHealth = [
   { name: 'Central HVAC System', health: 88, status: 'Stable' },
@@ -35,6 +28,50 @@ const recentActivity = [
 export default function TechnicianDashboardPage() {
   const { user } = useAuth()
   const firstName = user?.name?.split(' ')[0] ?? 'Technician'
+  const [queue, setQueue] = useState<TicketResponseDTO[]>([])
+  const [loadingQueue, setLoadingQueue] = useState(true)
+  const [queueError, setQueueError] = useState('')
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadQueue = async () => {
+      try {
+        const response = await getAllTickets()
+        if (!isMounted) return
+        const active = response.data
+          .filter((t) => t.status === 'OPEN' || t.status === 'IN_PROGRESS')
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 8)
+        setQueue(active)
+      } catch (error) {
+        if (!isMounted) return
+        setQueueError('Could not load active queue')
+      } finally {
+        if (isMounted) setLoadingQueue(false)
+      }
+    }
+
+    loadQueue()
+    const timer = setInterval(loadQueue, 15000)
+    return () => {
+      isMounted = false
+      clearInterval(timer)
+    }
+  }, [])
+
+  const activeJobsCount = queue.filter((t) => t.status === 'IN_PROGRESS').length
+  const highPriorityCount = queue.filter((t) => t.priority === 'HIGH' || t.priority === 'URGENT').length
+  const openCampusAlerts = useMemo(
+    () => queue.filter((t) => t.priority === 'URGENT' && t.status !== 'CLOSED').length,
+    [queue]
+  )
+
+  const getPriorityVariant = (priority?: string) => {
+    if (priority === 'URGENT' || priority === 'HIGH') return 'danger' as const
+    if (priority === 'MEDIUM') return 'warning' as const
+    return 'default' as const
+  }
 
   return (
     <DashboardDecor>
@@ -70,10 +107,20 @@ export default function TechnicianDashboardPage() {
 
         {/* Global Stats */}
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiMini label="My Active Jobs" value="4" hint="2 High priority" accent="from-orange-500/40 to-transparent" />
+          <KpiMini
+            label="My Active Jobs"
+            value={String(activeJobsCount)}
+            hint={`${highPriorityCount} High priority`}
+            accent="from-orange-500/40 to-transparent"
+          />
           <KpiMini label="SLA Compliance" value="96.2%" hint="+1.4% this week" accent="from-emerald-500/40 to-transparent" />
           <KpiMini label="Parts Pending" value="3" hint="Expected tomorrow" accent="from-blue-500/40 to-transparent" />
-          <KpiMini label="Open Campus Alerts" value="2" hint="HVAC, Power" accent="from-rose-500/40 to-transparent" />
+          <KpiMini
+            label="Open Campus Alerts"
+            value={String(openCampusAlerts)}
+            hint="From urgent queue"
+            accent="from-rose-500/40 to-transparent"
+          />
         </div>
       </section>
 
@@ -88,17 +135,32 @@ export default function TechnicianDashboardPage() {
                   <HiOutlineClipboardDocumentList className="h-6 w-6 text-[#3B82F6]" />
                   Active Work Queue
                 </h3>
-                <span className="text-xs font-mono text-[#64748B]">Last updated: 2m ago</span>
+                <span className="text-xs font-mono text-[#64748B]">Live sync every 15s</span>
              </div>
              
              <div className="space-y-4">
-                {activeWorkQueue.map((ticket) => (
+                {loadingQueue && (
+                  <div className="rounded-xl border border-[#1F2937] bg-[#0F172A]/50 p-6 text-sm text-[#94A3B8]">
+                    Loading active queue...
+                  </div>
+                )}
+                {!loadingQueue && queueError && (
+                  <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-6 text-sm text-rose-300">
+                    {queueError}
+                  </div>
+                )}
+                {!loadingQueue && !queueError && queue.length === 0 && (
+                  <div className="rounded-xl border border-[#1F2937] bg-[#0F172A]/50 p-6 text-sm text-[#94A3B8]">
+                    No active tickets right now.
+                  </div>
+                )}
+                {!loadingQueue && !queueError && queue.map((ticket) => (
                   <div key={ticket.id} className="group relative flex flex-col gap-4 rounded-xl border border-[#1F2937] bg-[#0F172A]/50 p-4 transition-all hover:border-[#3B82F6]/30 hover:bg-[#0F172A]/80 sm:flex-row sm:items-center">
                     <div className="flex flex-1 flex-col">
                       <div className="flex items-center gap-3">
-                        <span className="font-mono text-xs text-[#64748B]">{ticket.id}</span>
-                        <Pill variant={ticket.priority === 'high' ? 'danger' : ticket.priority === 'medium' ? 'warning' : 'default'}>
-                          {ticket.priority.toUpperCase()}
+                        <span className="font-mono text-xs text-[#64748B]">TK-{ticket.id}</span>
+                        <Pill variant={getPriorityVariant(ticket.priority)}>
+                          {(ticket.priority || 'LOW').toUpperCase()}
                         </Pill>
                         <span className={`text-[10px] font-bold uppercase tracking-wider ${ticket.status === 'IN_PROGRESS' ? 'text-blue-400' : 'text-slate-500'}`}>
                           {ticket.status.replace('_', ' ')}
@@ -108,11 +170,11 @@ export default function TechnicianDashboardPage() {
                       <div className="mt-2 flex items-center gap-4 text-xs text-[#94A3B8]">
                         <span className="flex items-center gap-1">
                           <HiOutlineMapPin className="h-4 w-4" />
-                          Smart Campus
+                          {ticket.resourceName || 'Smart Campus'}
                         </span>
                         <span className="flex items-center gap-1">
                           <HiOutlineBolt className="h-4 w-4" />
-                          Due {ticket.due}
+                          Created {new Date(ticket.createdAt).toLocaleDateString()}
                         </span>
                       </div>
                     </div>
