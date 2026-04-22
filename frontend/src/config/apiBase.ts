@@ -10,7 +10,7 @@ export function getApiBaseUrl(): string {
   if (import.meta.env.DEV) {
     return ''
   }
-  return 'http://localhost:8081'
+  return 'http://localhost:8082'
 }
 
 /**
@@ -26,7 +26,7 @@ export function getOAuthBaseUrl(): string {
     return String(direct).replace(/\/$/, '')
   }
   // Fallback: use the backend port directly (OAuth cannot go through the Vite proxy)
-  return import.meta.env.DEV ? 'http://localhost:8080' : ''
+  return import.meta.env.DEV ? 'http://localhost:8086' : ''
 }
 
 export function getWebSocketResourcesUrl(): string {
