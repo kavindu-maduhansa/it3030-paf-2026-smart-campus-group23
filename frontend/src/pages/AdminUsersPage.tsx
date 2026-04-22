@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { HiOutlineMagnifyingGlass, HiOutlineUserPlus, HiOutlineTrash } from 'react-icons/hi2'
+import { HiOutlineMagnifyingGlass, HiOutlineUserPlus } from 'react-icons/hi2'
 import { Pill, SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
 import { apiClient } from '../services/axiosConfig'
 import { useAuth } from '../services/useAuth'
 import EditUserRoleModal from '../components/EditUserRoleModal'
 import DeleteUserModal from '../components/DeleteUserModal'
+import Toast from '../components/Toast'
 
 interface User {
   id: number
@@ -32,6 +33,7 @@ export default function AdminUsersPage() {
   const [q, setQ] = useState('')
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [deletingUser, setDeletingUser] = useState<User | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   const fetchUsers = useCallback(async () => {
     // Don't attempt to load users if not authenticated
@@ -99,9 +101,19 @@ export default function AdminUsersPage() {
   }
 
   const handleDeleteSuccess = (userId: number) => {
+    // Find the deleted user's name for the notification
+    const deletedUser = users.find((u) => u.id === userId)
+    const userName = deletedUser?.name || 'User'
+
     // Remove the user from the list
     setUsers((prevUsers) => prevUsers.filter((u) => u.id !== userId))
     setDeletingUser(null)
+
+    // Show success toast
+    setToast({
+      message: `${userName} has been successfully deleted from the system.`,
+      type: 'success',
+    })
   }
 
   const filtered = users.filter(
@@ -229,9 +241,8 @@ export default function AdminUsersPage() {
                             type="button"
                             onClick={() => setDeletingUser(u)}
                             className="text-xs font-semibold text-[#EF4444] hover:underline"
-                            title="Delete user"
                           >
-                            <HiOutlineTrash className="h-4 w-4" />
+                            Delete
                           </button>
                         </div>
                       </td>
@@ -257,6 +268,15 @@ export default function AdminUsersPage() {
         onClose={() => setDeletingUser(null)}
         onSuccess={handleDeleteSuccess}
       />
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+          duration={4000}
+        />
+      )}
     </div>
   )
 }
