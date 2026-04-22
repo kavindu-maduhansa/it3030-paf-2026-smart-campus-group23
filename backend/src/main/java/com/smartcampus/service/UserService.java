@@ -92,6 +92,17 @@ public class UserService {
         return convertToDTO(user);
     }
 
+    @Transactional(readOnly = true)
+    public User getUserEntityById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+    }
+
+    @Transactional
+    public User saveUser(User user) {
+        return userRepository.save(user);
+    }
+
     @Transactional
     public UserResponseDTO updateUserRole(Long id, Role role) {
         User user = userRepository.findById(id)

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { HiOutlineMagnifyingGlass, HiOutlineUserPlus } from 'react-icons/hi2'
+import { HiOutlineMagnifyingGlass, HiOutlineUserPlus, HiXMark } from 'react-icons/hi2'
 import { Pill, SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
 import { apiClient } from '../services/axiosConfig'
 import { useAuth } from '../services/useAuth'
@@ -12,6 +12,11 @@ interface User {
   role: string
   provider?: string
   createdAt?: string
+}
+
+interface EditingState {
+  userId: number | null
+  newRole: string | null
 }
 
 function rolePill(role: string) {
@@ -28,6 +33,9 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [q, setQ] = useState('')
+  const [editing, setEditing] = useState<EditingState>({ userId: null, newRole: null })
+  const [updating, setUpdating] = useState(false)
+  const [updateError, setUpdateError] = useState<string | null>(null)
 
   const fetchUsers = useCallback(async () => {
     // Don't attempt to load users if not authenticated
@@ -85,6 +93,46 @@ export default function AdminUsersPage() {
       void fetchUsers()
     }
   }, [fetchUsers, authLoading])
+
+  const openEditRoleModal = (userId: number, currentRole: string) => {
+    setEditing({ userId, newRole: currentRole })
+    setUpdateError(null)
+  }
+
+  const closeEditRoleModal = () => {
+    setEditing({ userId: null, newRole: null })
+    setUpdateError(null)
+  }
+
+  const handleUpdateRole = async () => {
+    if (!editing.userId || !editing.newRole) return
+
+    try {
+      setUpdating(true)
+      setUpdateError(null)
+      console.log(`[AdminUsersPage] Updating user ${editing.userId} role to ${editing.newRole}`)
+      
+      const response = await apiClient.put(`/api/admin/users/${editing.userId}/role`, {
+        role: editing.newRole,
+      })
+      
+      console.log('[AdminUsersPage] Role updated successfully:', response.data)
+      
+      // Update the users list with the new data
+      setUsers(users.map((u) => (u.id === editing.userId ? { ...u, role: editing.newRole as string } : u)))
+      closeEditRoleModal()
+    } catch (err) {
+      console.error('[AdminUsersPage] Failed to update role:', err)
+      if (err && typeof err === 'object' && 'response' in err) {
+        const error = err as { response?: { status?: number; data?: any } }
+        setUpdateError(`Failed to update role: ${error.response?.status || 'Network error'}`)
+      } else {
+        setUpdateError('Failed to update role. Please try again.')
+      }
+    } finally {
+      setUpdating(false)
+    }
+  }
 
   const filtered = users.filter(
     (u) =>
@@ -201,8 +249,8 @@ export default function AdminUsersPage() {
                       <td className="px-5 py-4 text-right">
                         <button
                           type="button"
-                          className="text-xs font-semibold text-[#3B82F6] hover:underline disabled:opacity-50"
-                          disabled
+                          onClick={() => openEditRoleModal(u.id, u.role)}
+                          className="text-xs font-semibold text-[#3B82F6] hover:underline"
                         >
                           Edit role
                         </button>
@@ -211,6 +259,64 @@ export default function AdminUsersPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Role Modal */}
+        {editing.userId !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-xl border border-[#334155] bg-[#0F172A] p-6 shadow-2xl">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">Edit User Role</h3>
+                <button
+                  onClick={closeEditRoleModal}
+                  className="text-[#64748B] hover:text-white"
+                  disabled={updating}
+                >
+                  <HiXMark className="h-5 w-5" />
+                </button>
+              </div>
+
+              {updateError && (
+                <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+                  <p className="text-sm text-red-400">{updateError}</p>
+                </div>
+              )}
+
+              <div className="mb-6">
+                <label className="mb-2 block text-sm font-semibold text-[#94A3B8]">Select new role:</label>
+                <select
+                  value={editing.newRole || ''}
+                  onChange={(e) => setEditing({ ...editing, newRole: e.target.value })}
+                  disabled={updating}
+                  className="w-full rounded-lg border border-[#334155] bg-[#1E293B] px-4 py-2.5 text-white focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6] disabled:opacity-50"
+                >
+                  <option value="STUDENT">Student</option>
+                  <option value="LECTURER">Lecturer</option>
+                  <option value="TECHNICIAN">Technician</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={closeEditRoleModal}
+                  disabled={updating}
+                  className="flex-1 rounded-lg border border-[#334155] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUpdateRole}
+                  disabled={updating}
+                  className="flex-1 rounded-lg bg-[#3B82F6] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#2563EB] disabled:opacity-50"
+                >
+                  {updating ? 'Updating...' : 'Update Role'}
+                </button>
+              </div>
             </div>
           </div>
         )}

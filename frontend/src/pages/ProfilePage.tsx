@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { HiOutlineEnvelope, HiOutlineShieldCheck, HiOutlineUserCircle } from 'react-icons/hi2'
+import { HiOutlineEnvelope, HiOutlineShieldCheck, HiOutlineUserCircle, HiXMark } from 'react-icons/hi2'
 import { useAuth } from '../services/useAuth'
+import { apiClient } from '../services/axiosConfig'
 import { SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
 import { normalizeCampusRole, ROLE_DASHBOARD } from './dashboard/roleDashboardConfig'
 
@@ -20,6 +21,47 @@ export default function ProfilePage() {
   const [notifEmail, setNotifEmail] = useState(true)
   const [notifBookings, setNotifBookings] = useState(true)
   const [notifMaintenance, setNotifMaintenance] = useState(false)
+
+  const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [editName, setEditName] = useState(user?.name || '')
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [updateError, setUpdateError] = useState<string | null>(null)
+
+  const handleUpdateProfile = async () => {
+    if (!editName.trim()) {
+      setUpdateError('Name cannot be empty')
+      return
+    }
+
+    try {
+      setIsUpdating(true)
+      setUpdateError(null)
+      console.log('[ProfilePage] Updating profile with name:', editName)
+      
+      await apiClient.put('/api/profile', { name: editName.trim() })
+      
+      console.log('[ProfilePage] Profile updated successfully')
+      setIsEditingProfile(false)
+      // Note: User data will be refreshed on next auth check or page reload
+      window.location.reload()
+    } catch (err) {
+      console.error('[ProfilePage] Failed to update profile:', err)
+      if (err && typeof err === 'object' && 'response' in err) {
+        const error = err as { response?: { status?: number; data?: any } }
+        setUpdateError(`Failed to update profile: ${error.response?.data?.message || 'Network error'}`)
+      } else {
+        setUpdateError('Failed to update profile. Please try again.')
+      }
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const closeEditModal = () => {
+    setIsEditingProfile(false)
+    setEditName(user?.name || '')
+    setUpdateError(null)
+  }
 
   return (
     <div className="relative -mx-4 sm:-mx-6 lg:-mx-8">
@@ -60,9 +102,8 @@ export default function ProfilePage() {
               <div className="flex gap-2 sm:mb-2">
                 <button
                   type="button"
-                  className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white opacity-80 hover:bg-blue-500"
-                  disabled
-                  title="Coming soon"
+                  onClick={() => setIsEditingProfile(true)}
+                  className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600"
                 >
                   Edit profile
                 </button>
@@ -141,6 +182,70 @@ export default function ProfilePage() {
             .
           </p>
         </div>
+
+        {/* Edit Profile Modal */}
+        {isEditingProfile && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-xl border border-[#334155] bg-[#0F172A] p-6 shadow-2xl">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">Edit Profile</h3>
+                <button
+                  onClick={closeEditModal}
+                  className="text-[#64748B] hover:text-white"
+                  disabled={isUpdating}
+                >
+                  <HiXMark className="h-5 w-5" />
+                </button>
+              </div>
+
+              {updateError && (
+                <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+                  <p className="text-sm text-red-400">{updateError}</p>
+                </div>
+              )}
+
+              <div className="mb-6">
+                <label className="mb-2 block text-sm font-semibold text-[#94A3B8]">Full Name</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  disabled={isUpdating}
+                  placeholder="Enter your full name"
+                  className="w-full rounded-lg border border-[#334155] bg-[#1E293B] px-4 py-2.5 text-white placeholder-[#64748B] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6] disabled:opacity-50"
+                />
+              </div>
+
+              <div className="mb-6">
+                <p className="text-sm text-[#94A3B8]">
+                  <strong className="text-white">Email:</strong> {user?.email}
+                </p>
+                <p className="mt-2 text-sm text-[#94A3B8]">
+                  <strong className="text-white">Role:</strong> {roleLabel}
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  disabled={isUpdating}
+                  className="flex-1 rounded-lg border border-[#334155] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUpdateProfile}
+                  disabled={isUpdating}
+                  className="flex-1 rounded-lg bg-[#3B82F6] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#2563EB] disabled:opacity-50"
+                >
+                  {isUpdating ? 'Updating...' : 'Update Profile'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

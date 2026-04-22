@@ -205,6 +205,74 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(@RequestBody Map<String, String> updateRequest,
+                                          HttpServletRequest request,
+                                          @AuthenticationPrincipal OAuth2User principal) {
+        try {
+            String newName = updateRequest.get("name");
+            
+            if (newName == null || newName.trim().isEmpty()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Name cannot be empty");
+                return ResponseEntity.badRequest().body(error);
+            }
+            
+            // Get current user from session or OAuth2
+            HttpSession session = request.getSession(false);
+            SessionUser sessionUser = null;
+            User user = null;
+            
+            if (session != null) {
+                sessionUser = resolveSessionUser(session);
+                if (sessionUser != null && sessionUser.getId() != null) {
+                    user = userService.getUserEntityById(sessionUser.getId());
+                }
+            }
+            
+            if (user == null && principal != null) {
+                String email = (String) principal.getAttribute("email");
+                user = userService.findOrCreateUser(
+                    email,
+                    newName.trim(),
+                    "google"
+                );
+            }
+            
+            if (user == null) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "User not found");
+                return ResponseEntity.status(401).body(error);
+            }
+            
+            log.info("[Update Profile] Updating user {} name from '{}' to '{}'", 
+                    user.getId(), user.getName(), newName.trim());
+            
+            user.setName(newName.trim());
+            user = userService.saveUser(user);
+            
+            // Update session if it exists
+            if (session != null && sessionUser != null) {
+                sessionUser.setName(newName.trim());
+                session.setAttribute("user", sessionUser);
+            }
+            
+            log.info("[Update Profile] User {} profile updated successfully", user.getId());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Profile updated successfully");
+            response.put("name", user.getName());
+            response.put("email", user.getEmail());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("[Update Profile] Failed to update profile: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to update profile");
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(500).body(error);
+        }
+    }
+
     private static Map<String, Object> authSuccessBody(User user, String message) {
         Map<String, Object> body = new HashMap<>();
         body.put("email", Objects.toString(user.getEmail(), ""));
