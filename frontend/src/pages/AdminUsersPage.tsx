@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { HiOutlineMagnifyingGlass, HiOutlineUserPlus } from 'react-icons/hi2'
+import { HiOutlineMagnifyingGlass, HiOutlineUserPlus, HiOutlineArrowDownTray } from 'react-icons/hi2'
 import { Pill, SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
 import { apiClient } from '../services/axiosConfig'
 import { useAuth } from '../services/useAuth'
 import EditUserRoleModal from '../components/EditUserRoleModal'
 import DeleteUserModal from '../components/DeleteUserModal'
 import Toast from '../components/Toast'
+import { downloadUserReport } from '../utils/reportGenerator'
 
 interface User {
   id: number
@@ -149,6 +150,15 @@ export default function AdminUsersPage() {
               >
                 Dashboard
               </Link>
+              <button
+                type="button"
+                onClick={() => downloadUserReport(users)}
+                className="inline-flex items-center gap-2 rounded-lg border border-[#334155] px-4 py-2 text-sm font-semibold text-white hover:border-[#10B981]/50 hover:text-[#10B981] transition-colors"
+                title="Download user management report as CSV"
+              >
+                <HiOutlineArrowDownTray className="h-4 w-4" />
+                Export Report
+              </button>
               <button
                 type="button"
                 disabled
