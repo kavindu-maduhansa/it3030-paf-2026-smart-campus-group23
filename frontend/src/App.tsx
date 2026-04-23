@@ -17,6 +17,7 @@ import BookingsPage from './pages/BookingsPage'
 import MaintenancePage from './pages/MaintenancePage'
 import MaintenanceSupportPage from './pages/MaintenanceSupportPage'
 import TechnicianDashboardPage from './pages/TechnicianDashboardPage'
+import TechnicianAlertsPage from './pages/TechnicianAlertsPage'
 import { AnalyticsDashboard } from './components/AnalyticsDashboard'
 
 function App() {
@@ -48,6 +49,16 @@ function App() {
                 <ProtectedRoute requiredRole="TECHNICIAN">
                   <PageShell>
                     <TechnicianDashboardPage />
+                  </PageShell>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/technician/alerts"
+              element={
+                <ProtectedRoute requiredRole="TECHNICIAN">
+                  <PageShell>
+                    <TechnicianAlertsPage />
                   </PageShell>
                 </ProtectedRoute>
               }

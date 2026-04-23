@@ -41,6 +41,8 @@ import { formatDistanceToNow } from 'date-fns'
 export default function MaintenancePage() {
   const authContext = useContext(AuthContext)
   const user = authContext?.user
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN'
+  const isTechnician = user?.role?.toUpperCase() === 'TECHNICIAN'
 
   const [searchParams] = useSearchParams()
   const [tickets, setTickets] = useState<TicketResponseDTO[]>([])
@@ -49,7 +51,7 @@ export default function MaintenancePage() {
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL')
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
 
-  const [activeModal, setActiveModal] = useState<'view' | 'edit' | 'delete' | 'assign' | 'alert' | null>(null)
+  const [activeModal, setActiveModal] = useState<'view' | 'edit' | 'delete' | 'assign' | 'alert' | 'reject' | 'confirm' | null>(null)
   const [selectedTicket, setSelectedTicket] = useState<TicketResponseDTO | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [technicians, setTechnicians] = useState<User[]>([])
@@ -58,13 +60,27 @@ export default function MaintenancePage() {
     message: '',
     type: 'info'
   })
+  const [rejectionReason, setRejectionReason] = useState('')
+  const [confirmConfig, setConfirmConfig] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info'
+  }>({ title: '', message: '', onConfirm: () => { } })
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
 
   // For Edit Form
-  const [editForm, setEditForm] = useState<Partial<TicketResponseDTO>>({})
+  const [editForm, setEditForm] = useState<Partial<TicketResponseDTO>>({
+    category: '',
+    priority: '',
+    status: '',
+    contactDetails: '',
+    resolutionNotes: '',
+    assignedToId: null
+  })
 
   useEffect(() => {
     fetchTickets()
@@ -123,7 +139,7 @@ export default function MaintenancePage() {
 
   const handleOpenModal = async (type: 'view' | 'edit' | 'delete' | 'assign', ticket: TicketResponseDTO) => {
     setSelectedTicket(ticket)
-    if (type === 'edit' && user?.role === 'TECHNICIAN' && !ticket.assignedToId) {
+    if (type === 'edit' && isTechnician && !ticket.assignedToId) {
       showAlert(
         "Action Restricted",
         "This ticket is currently unassigned. Technicians can only edit tickets that are assigned to them. Please self-assign the ticket first.",
@@ -132,7 +148,7 @@ export default function MaintenancePage() {
       return
     }
 
-    if (type === 'delete' && user?.role === 'TECHNICIAN') {
+    if (type === 'delete' && isTechnician) {
       showAlert(
         "Action Restricted",
         "Technicians do not have permission to delete tickets. Please contact an administrator if a ticket needs to be removed.",
@@ -172,7 +188,8 @@ export default function MaintenancePage() {
         description: editForm.description || selectedTicket.description,
         category: editForm.category || selectedTicket.category,
         priority: editForm.priority || selectedTicket.priority,
-        contactDetails: editForm.contactDetails,
+        contactDetails: editForm.contactDetails || '',
+        resolutionNotes: editForm.resolutionNotes || '',
         resourceId: editForm.resourceId
       })
 
@@ -228,6 +245,46 @@ export default function MaintenancePage() {
       console.error('Failed to unassign ticket', err)
       showAlert("Unassignment Failed", "Could not unassign the technician.", "error")
     }
+  }
+
+  const handleRejectTicket = async () => {
+    if (!selectedTicket || !rejectionReason.trim()) {
+      setAlertConfig({
+        title: "Reason Required",
+        message: "Please provide a reason for rejection so the reporter knows why.",
+        type: 'warning'
+      })
+      setActiveModal('alert')
+      return
+    }
+
+    setConfirmConfig({
+      title: "Confirm Rejection",
+      message: `Are you sure you want to reject ticket TK-${selectedTicket.id}? This action cannot be undone.`,
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          // Send rejection reason in resolutionNotes field
+          await updateTicket(selectedTicket.id, {
+            title: selectedTicket.title,
+            description: selectedTicket.description,
+            category: selectedTicket.category,
+            priority: selectedTicket.priority,
+            status: 'REJECTED',
+            contactDetails: selectedTicket.contactDetails,
+            resourceId: selectedTicket.resourceId,
+            resolutionNotes: rejectionReason
+          })
+          await fetchTickets()
+          handleCloseModal()
+          setRejectionReason('')
+        } catch (err) {
+          console.error('Failed to reject ticket', err)
+          showAlert("Action Failed", "Could not reject the ticket.", "error")
+        }
+      }
+    })
+    setActiveModal('confirm')
   }
 
 
@@ -407,11 +464,11 @@ export default function MaintenancePage() {
                       </Pill>
 
                       <div className="ml-2 flex items-center gap-1">
-                        {((!t.assignedToId && user?.role === 'TECHNICIAN' && t.status !== 'REJECTED') || user?.role === 'ADMIN') && (
+                        {((!t.assignedToId && isTechnician && t.status !== 'REJECTED') || isAdmin) && (
                           <button
-                            onClick={() => user?.role === 'ADMIN' ? handleOpenModal('assign', t) : handleSelfAssign(t.id)}
+                            onClick={() => isAdmin ? handleOpenModal('assign', t) : handleSelfAssign(t.id)}
                             className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#334155] hover:text-emerald-400 transition-all"
-                            title={user?.role === 'ADMIN' ? "Assign Technician" : "Self-Assign"}
+                            title={isAdmin ? "Assign Technician" : "Self-Assign"}
                           >
                             <HiOutlineUserPlus className="h-5 w-5" />
                           </button>
@@ -423,7 +480,7 @@ export default function MaintenancePage() {
                         >
                           <HiOutlineEye className="h-5 w-5" />
                         </button>
-                        {(user?.role === 'ADMIN' || (user?.role === 'TECHNICIAN' && t.status !== 'REJECTED')) && (
+                        {(isAdmin || (isTechnician && t.status !== 'REJECTED')) && (
                           <button
                             onClick={() => handleOpenModal('edit', t)}
                             className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#334155] hover:text-amber-400 transition-all"
@@ -432,13 +489,26 @@ export default function MaintenancePage() {
                             <HiOutlinePencilSquare className="h-5 w-5" />
                           </button>
                         )}
-                        {user?.role === 'ADMIN' && (
+                        {isAdmin && (
                           <button
                             onClick={() => handleOpenModal('delete', t)}
                             className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#334155] hover:text-red-400 transition-all"
                             title="Delete Ticket"
                           >
                             <HiOutlineTrash className="h-5 w-5" />
+                          </button>
+                        )}
+                        {isAdmin && t.status !== 'REJECTED' && (
+                          <button
+                            onClick={() => {
+                              setSelectedTicket(t)
+                              setRejectionReason('')
+                              setActiveModal('reject')
+                            }}
+                            className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#334155] hover:text-rose-500 transition-all"
+                            title="Reject Ticket"
+                          >
+                            <HiOutlineXMark className="h-5 w-5" />
                           </button>
                         )}
                       </div>
@@ -564,8 +634,25 @@ export default function MaintenancePage() {
 
                     <div>
                       <h4 className="text-sm font-semibold uppercase text-[#64748B]">Description</h4>
-                      <p className="mt-2 text-white leading-relaxed">{selectedTicket.description}</p>
+                      <div className="mt-2 text-white leading-relaxed whitespace-pre-wrap">
+                        {selectedTicket.description.split('[REJECTION REASON]:')[0].trim()}
+                      </div>
                     </div>
+
+                    {(selectedTicket.resolutionNotes || selectedTicket.description.includes('[REJECTION REASON]:')) && (
+                      <div className={`mt-6 rounded-xl border p-4 ${
+                        selectedTicket.status === 'REJECTED' 
+                          ? 'border-red-500/20 bg-red-500/5 text-red-400' 
+                          : 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400'
+                      }`}>
+                        <span className="font-bold uppercase tracking-wider text-xs block mb-1">
+                          {selectedTicket.status === 'REJECTED' ? 'Rejection Reason' : 'Resolution Notes'}
+                        </span>
+                        <p className="whitespace-pre-wrap text-sm text-[#CBD5E1]">
+                          {selectedTicket.resolutionNotes || selectedTicket.description.split('[REJECTION REASON]:')[1]?.trim()}
+                        </p>
+                      </div>
+                    )}
 
                     {selectedTicket.imageUrls && selectedTicket.imageUrls.length > 0 && (
                       <div>
@@ -585,7 +672,7 @@ export default function MaintenancePage() {
                       </div>
                     )}
 
-                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 text-sm pb-6 border-b border-[#1F2937]/50">
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5 text-sm pb-6 border-b border-[#1F2937]/50">
                       <div>
                         <h4 className="font-bold uppercase tracking-wider text-[10px] text-[#64748B]">Category</h4>
                         <p className="mt-1 text-white font-medium">{selectedTicket.category}</p>
@@ -599,6 +686,10 @@ export default function MaintenancePage() {
                         <p className="mt-1 text-[#3B82F6] font-bold">{selectedTicket.userName || 'Anonymous'}</p>
                       </div>
                       <div>
+                        <h4 className="font-bold uppercase tracking-wider text-[10px] text-[#64748B]">Contact</h4>
+                        <p className="mt-1 text-emerald-500 font-bold">{selectedTicket.contactDetails || 'N/A'}</p>
+                      </div>
+                      <div>
                         <h4 className="font-bold uppercase tracking-wider text-[10px] text-[#64748B]">Assignee</h4>
                         <p className="mt-1 text-amber-500 font-bold">{selectedTicket.assignedToName || 'Unassigned'}</p>
                       </div>
@@ -607,7 +698,18 @@ export default function MaintenancePage() {
 
                 </div>
 
-                <div className="bg-[#111827] p-6 flex justify-end">
+                <div className="bg-[#111827] p-6 flex justify-end gap-3">
+                  {isAdmin && selectedTicket.status !== 'REJECTED' && (
+                    <button
+                      onClick={() => {
+                        setRejectionReason('')
+                        setActiveModal('reject')
+                      }}
+                      className="rounded-xl border border-red-500/30 bg-red-500/5 px-6 py-2.5 text-sm font-bold text-red-400 hover:bg-red-500/10 transition-all"
+                    >
+                      Reject Ticket
+                    </button>
+                  )}
                   <button
                     onClick={handleCloseModal}
                     className="rounded-xl bg-[#3B82F6] px-6 py-2.5 text-sm font-bold text-white hover:bg-blue-500 transition-all"
@@ -654,7 +756,7 @@ export default function MaintenancePage() {
                         <option value="IN_PROGRESS">In Progress</option>
                         <option value="RESOLVED">Resolved</option>
                         <option value="CLOSED">Closed</option>
-                        {user?.role === 'ADMIN' && <option value="REJECTED">Rejected</option>}
+                        {isAdmin && <option value="REJECTED">Rejected</option>}
                       </select>
                     </div>
                   </div>
@@ -670,12 +772,15 @@ export default function MaintenancePage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Internal Notes</label>
-                    <textarea
-                      rows={3}
-                      placeholder="Add resolution notes or technical updates..."
-                      className="w-full rounded-xl border border-[#334155] bg-[#0F172A] p-4 text-white focus:border-[#3B82F6] outline-none resize-none"
-                    />
+                     <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Internal Notes (Staff Only)</label>
+                     <textarea
+                       rows={3}
+                       value={editForm.resolutionNotes}
+                       onChange={(e) => setEditForm({ ...editForm, resolutionNotes: e.target.value })}
+                       disabled={!isTechnician && !isAdmin}
+                       placeholder={isTechnician || isAdmin ? "Add resolution notes or technical updates..." : "Only staff can add resolution notes."}
+                       className={`w-full rounded-xl border border-[#334155] bg-[#0F172A] p-4 text-white focus:border-[#3B82F6] outline-none resize-none ${!isTechnician && !isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                     />
                   </div>
                 </div>
 
@@ -795,6 +900,80 @@ export default function MaintenancePage() {
                   >
                     Cancel
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* CONFIRM MODAL */}
+            {activeModal === 'confirm' && (
+              <div className="flex flex-col">
+                <div className="p-8 text-center sm:text-left">
+                  <div className={`mx-auto sm:mx-0 flex h-14 w-14 items-center justify-center rounded-full mb-6 ${
+                    confirmConfig.type === 'danger' ? 'bg-red-500/20 text-red-500' :
+                    confirmConfig.type === 'warning' ? 'bg-amber-500/20 text-amber-500' :
+                    'bg-blue-500/20 text-blue-500'
+                  }`}>
+                    <HiOutlineExclamationTriangle className="h-8 w-8" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-white">{confirmConfig.title}</h2>
+                  <p className="mt-3 text-[#94A3B8] leading-relaxed">
+                    {confirmConfig.message}
+                  </p>
+                </div>
+
+                <div className="bg-[#111827] p-6 flex flex-col sm:flex-row justify-end gap-3">
+                  <button
+                    onClick={() => setActiveModal('reject')}
+                    className="rounded-xl border border-[#334155] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#1F2937] transition-all order-2 sm:order-1"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={confirmConfig.onConfirm}
+                    className={`rounded-xl px-6 py-2.5 text-sm font-bold text-white transition-all flex items-center justify-center gap-2 order-1 sm:order-2 ${
+                      confirmConfig.type === 'danger' ? 'bg-red-600 hover:bg-red-500' :
+                      confirmConfig.type === 'warning' ? 'bg-amber-600 hover:bg-amber-500' :
+                      'bg-blue-600 hover:bg-blue-500'
+                    }`}
+                  >
+                    Confirm Action
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* REJECT MODAL */}
+            {activeModal === 'reject' && selectedTicket && (
+              <div className="flex flex-col p-8">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-white">Reject Ticket</h2>
+                  <p className="mt-1 text-sm text-[#64748B]">Please provide a reason for rejecting TK-{selectedTicket.id}</p>
+                </div>
+
+                <div className="space-y-4">
+                  <textarea
+                    required
+                    rows={4}
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="Type the reason for rejection here..."
+                    className="w-full rounded-xl border border-[#334155] bg-[#0F172A] p-4 text-white focus:border-red-500 outline-none resize-none"
+                  />
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button
+                      onClick={handleCloseModal}
+                      className="rounded-xl border border-[#334155] px-6 py-2.5 text-sm font-bold text-white hover:bg-white/5 transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleRejectTicket}
+                      className="rounded-xl bg-red-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-red-500 transition-all shadow-lg shadow-red-500/20"
+                    >
+                      Confirm Rejection
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

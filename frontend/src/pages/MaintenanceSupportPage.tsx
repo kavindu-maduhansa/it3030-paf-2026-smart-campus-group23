@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  HiOutlineWrenchScrewdriver as WrenchIcon, 
-  HiOutlinePhoto as PhotoIcon, 
-  HiOutlineXMark as XIcon, 
+import {
+  HiOutlineWrenchScrewdriver as WrenchIcon,
+  HiOutlinePhoto as PhotoIcon,
+  HiOutlineXMark as XIcon,
   HiOutlineMagnifyingGlass as SearchIcon,
   HiOutlineInformationCircle as InfoIcon,
   HiOutlineCheckCircle as CheckIcon,
-  HiOutlineListBullet as ListIcon 
+  HiOutlineListBullet as ListIcon,
+  HiOutlinePhone as PhoneIcon
 } from 'react-icons/hi2'
 
 import { getResources } from '../services/resourceService'
@@ -21,7 +22,7 @@ import { userService, type UserDTO } from '../services/userService'
 import { HiOutlineUser } from 'react-icons/hi2'
 
 const CATEGORIES = [
-  'Electrical', 'Plumbing', 'IT & Network', 'AV & Projector', 
+  'Electrical', 'Plumbing', 'IT & Network', 'AV & Projector',
   'HVAC / Air Con', 'Furniture', 'Janitorial', 'Other'
 ]
 
@@ -38,7 +39,7 @@ export default function MaintenanceSupportPage() {
     contactDetails: '',
     resourceId: undefined
   })
-  
+
   const [images, setImages] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
   const [resources, setResources] = useState<Resource[]>([])
@@ -47,7 +48,7 @@ export default function MaintenanceSupportPage() {
   const [showResourceList, setShowResourceList] = useState(false)
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null)
   const [isSuccess, setIsSuccess] = useState(false)
-  
+
   // Staff 'on behalf of' state
   const { user } = useAuth()
   const [allUsers, setAllUsers] = useState<UserDTO[]>([])
@@ -55,7 +56,7 @@ export default function MaintenanceSupportPage() {
   const [showUserList, setShowUserList] = useState(false)
   const [selectedUser, setSelectedUser] = useState<UserDTO | null>(null)
   const userDropdownRef = useRef<HTMLDivElement>(null)
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -118,14 +119,14 @@ export default function MaintenanceSupportPage() {
     setPreviews(newPreviews)
   }
 
-  const filteredResources = resources.filter(res => 
-    res.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredResources = resources.filter(res =>
+    res.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     res.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
     res.location.toLowerCase().includes(searchQuery.toLowerCase())
   ).slice(0, 5)
 
-  const filteredUsers = allUsers.filter(u => 
-    u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) || 
+  const filteredUsers = allUsers.filter(u =>
+    u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
     u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
   ).slice(0, 5)
 
@@ -141,7 +142,7 @@ export default function MaintenanceSupportPage() {
       setIsSuccess(true)
       // Reset form
       setFormData({
-        title: '', description: '', category: '', 
+        title: '', description: '', category: '',
         priority: 'MEDIUM', contactDetails: '', resourceId: undefined
       })
       setImages([])
@@ -160,8 +161,8 @@ export default function MaintenanceSupportPage() {
   return (
     <div className="mx-auto max-w-4xl pb-20">
       <SectionHeader
-        eyebrow="Campus Maintenance"
-        title="Support Hub"
+        eyebrow="Smart Campus"
+        title="Maintenance and Support"
         subtitle="Report an issue or track your existing maintenance requests."
         action={
           <button
@@ -177,22 +178,20 @@ export default function MaintenanceSupportPage() {
       <div className="mt-8 flex border-b border-[#1F2937]">
         <button
           onClick={() => { setActiveTab('report'); setIsSuccess(false); }}
-          className={`flex items-center gap-2 border-b-2 px-6 py-4 text-sm font-bold transition-all ${
-            activeTab === 'report' 
-              ? 'border-[#3B82F6] text-white' 
-              : 'border-transparent text-[#64748B] hover:text-[#94A3B8]'
-          }`}
+          className={`flex items-center gap-2 border-b-2 px-6 py-4 text-sm font-bold transition-all ${activeTab === 'report'
+            ? 'border-[#3B82F6] text-white'
+            : 'border-transparent text-[#64748B] hover:text-[#94A3B8]'
+            }`}
         >
           <WrenchIcon className="h-5 w-5" />
           Report Incident
         </button>
         <button
           onClick={() => { setActiveTab('history'); setIsSuccess(false); }}
-          className={`flex items-center gap-2 border-b-2 px-6 py-4 text-sm font-bold transition-all ${
-            activeTab === 'history' 
-              ? 'border-[#3B82F6] text-white' 
-              : 'border-transparent text-[#64748B] hover:text-[#94A3B8]'
-          }`}
+          className={`flex items-center gap-2 border-b-2 px-6 py-4 text-sm font-bold transition-all ${activeTab === 'history'
+            ? 'border-[#3B82F6] text-white'
+            : 'border-transparent text-[#64748B] hover:text-[#94A3B8]'
+            }`}
         >
           <ListIcon className="h-5 w-5" />
           My Tickets
@@ -240,10 +239,10 @@ export default function MaintenanceSupportPage() {
                           <div className="absolute z-[60] mt-2 w-full overflow-hidden rounded-xl border border-[#1F2937] bg-[#111827] shadow-2xl">
                             {filteredUsers.length > 0 ? (
                               filteredUsers.map(u => (
-                                <button 
-                                  key={u.id} 
-                                  type="button" 
-                                  onClick={() => { setSelectedUser(u); setShowUserList(false); }} 
+                                <button
+                                  key={u.id}
+                                  type="button"
+                                  onClick={() => { setSelectedUser(u); setShowUserList(false); }}
                                   className="flex w-full flex-col px-4 py-3 text-left hover:bg-[#1F2937]"
                                 >
                                   <span className="text-sm font-medium text-white">{u.name}</span>
@@ -256,13 +255,13 @@ export default function MaintenanceSupportPage() {
                           </div>
                         )}
                         {selectedUser && (
-                           <button 
-                             type="button"
-                             onClick={() => { setSelectedUser(null); setUserSearchQuery(''); }}
-                             className="absolute right-3 top-3 text-[#64748B] hover:text-white"
-                           >
-                             <XIcon className="h-5 w-5" />
-                           </button>
+                          <button
+                            type="button"
+                            onClick={() => { setSelectedUser(null); setUserSearchQuery(''); }}
+                            className="absolute right-3 top-3 text-[#64748B] hover:text-white"
+                          >
+                            <XIcon className="h-5 w-5" />
+                          </button>
                         )}
                       </div>
                       <p className="mt-2 text-[10px] text-[#64748B] italic">Leave empty to report as yourself ({user?.name}).</p>
@@ -291,6 +290,28 @@ export default function MaintenanceSupportPage() {
                       <option value="">Select Category</option>
                       {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                     </select>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-semibold text-white">Mobile Number (Primary Contact)</label>
+                    <div className="relative mt-2">
+                      <PhoneIcon className="absolute left-3 top-3.5 h-4 w-4 text-[#475569]" />
+                      <input
+                        required
+                        type="tel"
+                        placeholder="e.g. 0712345678"
+                        value={formData.contactDetails}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '') // Only numbers
+                          if (value.length <= 10) {
+                            if (value.length === 0 || value.startsWith('0')) {
+                              setFormData({ ...formData, contactDetails: value })
+                            }
+                          }
+                        }}
+                        className="h-11 w-full rounded-xl border border-[#1F2937] bg-[#0F172A] pl-10 pr-4 text-white placeholder:text-[#475569] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -365,7 +386,7 @@ export default function MaintenanceSupportPage() {
               <div className="flex justify-end pt-4">
                 <button
                   type="submit"
-                  disabled={isLoading || !formData.title || !formData.description}
+                  disabled={isLoading || !formData.title || !formData.description || (formData.contactDetails?.length || 0) !== 10}
                   className="inline-flex h-12 items-center gap-2 rounded-xl bg-[#3B82F6] px-8 text-base font-bold text-white hover:bg-blue-500 transition-all active:scale-95 disabled:opacity-50"
                 >
                   {isLoading ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white" /> : <WrenchIcon className="h-5 w-5" />}

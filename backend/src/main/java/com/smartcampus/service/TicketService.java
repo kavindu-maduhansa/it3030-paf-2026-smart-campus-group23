@@ -208,6 +208,7 @@ public class TicketService {
         if (dto.getDescription() != null) ticket.setDescription(dto.getDescription());
         if (dto.getCategory() != null) ticket.setCategory(dto.getCategory());
         if (dto.getContactDetails() != null) ticket.setContactDetails(dto.getContactDetails());
+        if (dto.getResolutionNotes() != null) ticket.setResolutionNotes(dto.getResolutionNotes());
         
         // Priority and Status changes might be restricted or have special logic
         if (currentUser.getRole() == com.smartcampus.security.Role.ADMIN || 

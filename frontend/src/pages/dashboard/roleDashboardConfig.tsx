@@ -125,7 +125,7 @@ export const ROLE_DASHBOARD: Record<CampusRole, RoleDashboardConfig> = {
       {
         to: '/maintenance',
         title: 'Maintenance & tickets',
-        description: 'Monitor open tickets, SLA status, and technician assignments.',
+        description: 'Manage all tickets and issues.',
         Icon: HiOutlineWrenchScrewdriver,
         iconClass: 'bg-violet-500/15 text-[#8B5CF6] ring-1 ring-violet-500/30',
       },
@@ -175,7 +175,7 @@ export const ROLE_DASHBOARD: Record<CampusRole, RoleDashboardConfig> = {
       {
         to: '/maintenance/report',
         title: 'Support & Tickets',
-        description: 'Escalate venue issues and monitor repair progress.',
+        description: 'Report issues and track maintenance requests.',
         Icon: HiOutlineWrenchScrewdriver,
         iconClass: 'bg-violet-500/15 text-[#8B5CF6] ring-1 ring-violet-500/30',
       },

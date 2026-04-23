@@ -40,4 +40,6 @@ public class TicketRequestDTO {
     private java.util.List<Long> removedAttachmentIds; // IDs of images to delete
     
     private Long onBehalfOfUserId; // ID of the user on whose behalf the ticket is being reported
+    
+    private String resolutionNotes; // Notes about the resolution
 }

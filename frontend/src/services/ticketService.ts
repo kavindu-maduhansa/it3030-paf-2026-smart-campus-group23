@@ -10,6 +10,7 @@ export interface TicketRequestDTO {
   status?: string
   removedAttachmentIds?: number[]
   onBehalfOfUserId?: number
+  resolutionNotes?: string
 }
 
 export interface AttachmentDTO {
@@ -35,6 +36,7 @@ export interface TicketResponseDTO {
   location?: string
   imageUrls: string[]
   attachments?: AttachmentDTO[]
+  resolutionNotes?: string
   createdAt: string
   updatedAt: string
 }
