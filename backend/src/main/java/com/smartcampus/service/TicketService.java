@@ -86,6 +86,7 @@ public class TicketService {
                     attachment.setFileType(image.getContentType());
                     attachment.setFileSize(image.getSize());
                     
+                    savedTicket.getAttachments().add(attachment);
                     attachmentRepository.save(attachment);
                 }
             }
@@ -118,6 +119,16 @@ public class TicketService {
     public List<TicketResponseDTO> getMyTickets(User user) {
         log.info("Fetching tickets for owner: {}", user.getEmail());
         return ticketRepository.findByUserId(user.getId())
+                .stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(this::convertToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<TicketResponseDTO> getAssignedTickets(User technician) {
+        log.info("Fetching tickets assigned to technician: {}", technician.getEmail());
+        return ticketRepository.findByAssignedToId(technician.getId())
                 .stream()
                 .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .map(this::convertToResponseDTO)
@@ -166,6 +177,93 @@ public class TicketService {
     }
 
     @Transactional
+    public TicketResponseDTO updateTicket(Long id, TicketRequestDTO dto, User currentUser, org.springframework.web.multipart.MultipartFile[] images) {
+        Ticket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + id));
+
+        log.info("Update request for ticket {} by user {}", id, currentUser.getEmail());
+
+        // Only admins, technicians, or the original reporter can edit tickets
+        if (currentUser.getRole() != com.smartcampus.security.Role.ADMIN && 
+            currentUser.getRole() != com.smartcampus.security.Role.TECHNICIAN) {
+            
+            if (!ticket.getUser().getId().equals(currentUser.getId())) {
+                throw new org.springframework.security.access.AccessDeniedException("You do not have permission to edit this ticket");
+            }
+            
+            // New Requirement: User can't edit if a technician is assigned
+            if (ticket.getAssignedTo() != null) {
+                throw new org.springframework.security.access.AccessDeniedException("Cannot edit ticket once a technician has been assigned");
+            }
+        }
+
+        if (dto.getTitle() != null) ticket.setTitle(dto.getTitle());
+        if (dto.getDescription() != null) ticket.setDescription(dto.getDescription());
+        if (dto.getCategory() != null) ticket.setCategory(dto.getCategory());
+        if (dto.getContactDetails() != null) ticket.setContactDetails(dto.getContactDetails());
+        
+        // Priority and Status changes might be restricted or have special logic
+        if (currentUser.getRole() == com.smartcampus.security.Role.ADMIN || 
+            currentUser.getRole() == com.smartcampus.security.Role.TECHNICIAN) {
+            
+            if (dto.getPriority() != null) {
+                ticket.setPriority(TicketPriority.valueOf(dto.getPriority().toUpperCase()));
+            }
+
+            if (dto.getStatus() != null) {
+                TicketStatus newStatus = TicketStatus.valueOf(dto.getStatus().toUpperCase());
+                if (ticket.getStatus() != newStatus) {
+                    // We reuse the updateTicketStatus logic for timestamps and rules
+                    updateTicketStatus(id, newStatus, currentUser);
+                }
+            }
+        }
+
+        // Handle Image Deletion
+        if (dto.getRemovedAttachmentIds() != null && !dto.getRemovedAttachmentIds().isEmpty()) {
+            for (Long attachmentId : dto.getRemovedAttachmentIds()) {
+                Attachment attachment = attachmentRepository.findById(attachmentId)
+                        .filter(a -> a.getTicket().getId().equals(id))
+                        .orElse(null);
+                
+                if (attachment != null) {
+                    fileStorageService.deleteFile(attachment.getFilePath());
+                    ticket.getAttachments().remove(attachment);
+                    attachmentRepository.delete(attachment);
+                }
+            }
+        }
+
+        // Handle Image Addition
+        if (images != null && images.length > 0) {
+            int currentCount = ticket.getAttachments().size();
+            if (currentCount + images.length > 3) {
+                throw new IllegalArgumentException("Total images cannot exceed 3. Currently have " + currentCount + ", trying to add " + images.length);
+            }
+
+            for (org.springframework.web.multipart.MultipartFile image : images) {
+                if (image != null && !image.isEmpty()) {
+                    String fileName = fileStorageService.storeFile(image);
+                    
+                    Attachment attachment = new Attachment();
+                    attachment.setTicket(ticket);
+                    attachment.setFileName(image.getOriginalFilename());
+                    attachment.setFilePath(fileName);
+                    attachment.setFileType(image.getContentType());
+                    attachment.setFileSize(image.getSize());
+                    
+                    ticket.getAttachments().add(attachment);
+                    attachmentRepository.save(attachment);
+                }
+            }
+        }
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+        mongoTicketSyncService.upsertTicket(savedTicket);
+        return convertToResponseDTO(savedTicket);
+    }
+
+    @Transactional
     public TicketResponseDTO assignTechnician(Long ticketId, Long technicianId, User currentUser) {
         if (currentUser.getRole() != com.smartcampus.security.Role.ADMIN && 
             currentUser.getRole() != com.smartcampus.security.Role.TECHNICIAN) {
@@ -189,6 +287,25 @@ public class TicketService {
         Ticket updatedTicket = ticketRepository.save(ticket);
         mongoTicketSyncService.upsertTicket(updatedTicket);
         return convertToResponseDTO(updatedTicket);
+    }
+
+    @Transactional
+    public void deleteTicket(Long id, User currentUser) {
+        Ticket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + id));
+
+        log.info("Delete request for ticket {} by user {}", id, currentUser.getEmail());
+
+        // Requirement: Only admins or technicians can delete tickets. Owners (STUDENT/LECTURER) CANNOT.
+        if (currentUser.getRole() != com.smartcampus.security.Role.ADMIN && 
+            currentUser.getRole() != com.smartcampus.security.Role.TECHNICIAN) {
+            log.warn("Unauthorized delete attempt by user {} for ticket {}", currentUser.getEmail(), id);
+            throw new org.springframework.security.access.AccessDeniedException("Only admins or technicians can delete a ticket");
+        }
+
+        ticketRepository.delete(ticket);
+        mongoTicketSyncService.deleteTicket(id);
+        log.info("Ticket {} deleted successfully", id);
     }
 
     @Transactional(readOnly = true)
@@ -239,6 +356,12 @@ public class TicketService {
                 .closedAt(ticket.getClosedAt())
                 .createdAt(ticket.getCreatedAt())
                 .updatedAt(ticket.getUpdatedAt())
+                .imageUrls(ticket.getAttachments().stream()
+                        .map(attachment -> "/api/tickets/images/" + attachment.getFilePath())
+                        .collect(Collectors.toList()))
+                .attachments(ticket.getAttachments().stream()
+                        .map(a -> new TicketResponseDTO.AttachmentDTO(a.getId(), "/api/tickets/images/" + a.getFilePath(), a.getFileName()))
+                        .collect(Collectors.toList()))
                 .build();
     }
 }

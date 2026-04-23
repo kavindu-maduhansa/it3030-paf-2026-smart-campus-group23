@@ -5,7 +5,6 @@ import { DashboardDecor, featureCard, iconBase, tilePanel } from './dashboard/da
 import AdminPanels from './dashboard/panels/AdminPanels'
 import LecturerPanels from './dashboard/panels/LecturerPanels'
 import StudentPanels from './dashboard/panels/StudentPanels'
-import TechnicianPanels from './dashboard/panels/TechnicianPanels'
 import { ROLE_DASHBOARD, normalizeCampusRole } from './dashboard/roleDashboardConfig'
 
 function firstName(fullName: string | undefined): string {
@@ -110,7 +109,7 @@ export default function DashboardPage() {
       {campusRole === 'STUDENT' && <StudentPanels user={user ?? null} />}
       {campusRole === 'ADMIN' && <AdminPanels />}
       {campusRole === 'LECTURER' && <LecturerPanels />}
-      {campusRole === 'TECHNICIAN' && <TechnicianPanels />}
+
 
       <section className="mt-14" aria-labelledby="account-info-heading">
         <h2

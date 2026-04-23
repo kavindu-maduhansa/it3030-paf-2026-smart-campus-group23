@@ -65,11 +65,12 @@ public class SecurityConfig {
                 // Admin & Analytics endpoints - ADMIN only
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 
-                // Tickets endpoints - ADMIN or TECHNICIAN
-                .requestMatchers("/tickets/**").hasAnyRole("ADMIN", "TECHNICIAN")
+                // Tickets endpoints - ADMIN or TECHNICIAN (DELETE is restricted to staff)
+                .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/tickets/**").hasAnyRole("ADMIN", "TECHNICIAN")
+                .requestMatchers("/api/tickets/**").authenticated()
                 
                 // Bookings endpoints - STUDENT or LECTURER
-                .requestMatchers("/bookings/**").hasAnyRole("STUDENT", "LECTURER")
+                .requestMatchers("/api/bookings/**").hasAnyRole("STUDENT", "LECTURER", "ADMIN")
                 
                 // WebSocket connections - allow all authenticated
                 .requestMatchers("/ws/**").permitAll()

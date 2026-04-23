@@ -86,12 +86,7 @@ export default function Layout({ children }: LayoutProps) {
             >
               Bookings
             </NavLink>
-            <NavLink
-              to="/maintenance"
-              className={({ isActive }) => navLinkClass(isActive)}
-            >
-              Maintenance
-            </NavLink>
+
           </nav>
 
           <div className="hidden items-center gap-3 md:flex">
@@ -182,13 +177,7 @@ export default function Layout({ children }: LayoutProps) {
             >
               Bookings
             </NavLink>
-            <NavLink
-              to="/maintenance"
-              onClick={closeMobile}
-              className={({ isActive }) => `${navLinkClass(isActive)} px-4 py-3`}
-            >
-              Maintenance
-            </NavLink>
+
             {isAuthenticated && user ? (
               <div className="mt-4 border-t border-[#1F2937] pt-4">
                 <div className="mb-3 px-4 text-sm text-[#94A3B8]">

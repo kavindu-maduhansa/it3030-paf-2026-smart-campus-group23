@@ -33,4 +33,15 @@ public class TicketResponseDTO {
     private LocalDateTime closedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private java.util.List<String> imageUrls;
+    private java.util.List<AttachmentDTO> attachments;
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class AttachmentDTO {
+        private Long id;
+        private String url;
+        private String name;
+    }
 }
