@@ -32,4 +32,10 @@ public class AdminController {
         UserResponseDTO updatedUser = userService.updateUserRole(id, request.getRole());
         return ResponseEntity.ok(updatedUser);
     }
+
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
+    }
 }

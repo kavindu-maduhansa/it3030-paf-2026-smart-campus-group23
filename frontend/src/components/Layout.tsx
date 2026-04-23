@@ -4,6 +4,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { HiMenuAlt3, HiX } from 'react-icons/hi'
 import { useAuth } from '../services/useAuth'
 import { logout } from '../services/authService'
+import NotificationBadge from './NotificationBadge'
 
 type LayoutProps = {
   children: ReactNode
@@ -91,6 +92,7 @@ export default function Layout({ children }: LayoutProps) {
           <div className="hidden items-center gap-3 md:flex">
             {isAuthenticated && user ? (
               <>
+                <NotificationBadge />
                 <span className="text-sm text-[#94A3B8]">
                   Welcome, <span className="font-medium text-white">{user.name}</span>
                 </span>

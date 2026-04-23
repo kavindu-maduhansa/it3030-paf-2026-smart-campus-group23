@@ -3,6 +3,7 @@ import { HiOutlineExclamationTriangle, HiOutlineShieldExclamation } from 'react-
 import { KpiMini, Pill, SectionHeader, panelLg, tilePanel } from '../dashboardUi'
 import { useState, useEffect } from 'react'
 import { analyticsService, type AdminStats } from '../../../services/analyticsService'
+import AdminNotificationPanel from '../../../components/AdminNotificationPanel'
 
 const attention = [
   { title: '12 bookings awaiting approval', detail: 'Mostly lecture halls · Fri peak', severity: 'warning' as const },
@@ -145,6 +146,9 @@ export default function AdminPanels() {
           </Link>
         </div>
       </div>
+
+      {/* Notification Center */}
+      <AdminNotificationPanel />
 
       <div className={tilePanel}>
         <p className="text-sm text-[#94A3B8]">

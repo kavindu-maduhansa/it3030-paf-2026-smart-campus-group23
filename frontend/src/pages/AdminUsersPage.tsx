@@ -1,9 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { HiOutlineMagnifyingGlass, HiOutlineUserPlus } from 'react-icons/hi2'
+import { HiOutlineMagnifyingGlass, HiOutlineUserPlus, HiOutlineArrowDownTray } from 'react-icons/hi2'
 import { Pill, SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
 import { apiClient } from '../services/axiosConfig'
 import { useAuth } from '../services/useAuth'
+import EditUserRoleModal from '../components/EditUserRoleModal'
+import DeleteUserModal from '../components/DeleteUserModal'
+import Toast from '../components/Toast'
+import { downloadUserReport } from '../utils/reportGenerator'
 
 interface User {
   id: number
@@ -28,6 +32,9 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [q, setQ] = useState('')
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [deletingUser, setDeletingUser] = useState<User | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   const fetchUsers = useCallback(async () => {
     // Don't attempt to load users if not authenticated
@@ -86,6 +93,30 @@ export default function AdminUsersPage() {
     }
   }, [fetchUsers, authLoading])
 
+  const handleRoleUpdateSuccess = (updatedUser: User) => {
+    // Update the user in the list
+    setUsers((prevUsers) =>
+      prevUsers.map((u) => (u.id === updatedUser.id ? updatedUser : u))
+    )
+    setEditingUser(null)
+  }
+
+  const handleDeleteSuccess = (userId: number) => {
+    // Find the deleted user's name for the notification
+    const deletedUser = users.find((u) => u.id === userId)
+    const userName = deletedUser?.name || 'User'
+
+    // Remove the user from the list
+    setUsers((prevUsers) => prevUsers.filter((u) => u.id !== userId))
+    setDeletingUser(null)
+
+    // Show success toast
+    setToast({
+      message: `${userName} has been successfully deleted from the system.`,
+      type: 'success',
+    })
+  }
+
   const filtered = users.filter(
     (u) =>
       u.name.toLowerCase().includes(q.toLowerCase()) || u.email.toLowerCase().includes(q.toLowerCase())
@@ -119,6 +150,15 @@ export default function AdminUsersPage() {
               >
                 Dashboard
               </Link>
+              <button
+                type="button"
+                onClick={() => downloadUserReport(users)}
+                className="inline-flex items-center gap-2 rounded-lg border border-[#334155] px-4 py-2 text-sm font-semibold text-white hover:border-[#10B981]/50 hover:text-[#10B981] transition-colors"
+                title="Download user management report as CSV"
+              >
+                <HiOutlineArrowDownTray className="h-4 w-4" />
+                Export Report
+              </button>
               <button
                 type="button"
                 disabled
@@ -199,13 +239,22 @@ export default function AdminUsersPage() {
                       <td className="px-5 py-4 text-[#94A3B8]">{u.email}</td>
                       <td className="px-5 py-4">{rolePill(u.role)}</td>
                       <td className="px-5 py-4 text-right">
-                        <button
-                          type="button"
-                          className="text-xs font-semibold text-[#3B82F6] hover:underline disabled:opacity-50"
-                          disabled
-                        >
-                          Edit role
-                        </button>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingUser(u)}
+                            className="text-xs font-semibold text-[#3B82F6] hover:underline"
+                          >
+                            Edit role
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingUser(u)}
+                            className="text-xs font-semibold text-[#EF4444] hover:underline"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -215,6 +264,29 @@ export default function AdminUsersPage() {
           </div>
         )}
       </div>
+
+      <EditUserRoleModal
+        isOpen={!!editingUser}
+        user={editingUser}
+        onClose={() => setEditingUser(null)}
+        onSuccess={handleRoleUpdateSuccess}
+      />
+
+      <DeleteUserModal
+        isOpen={!!deletingUser}
+        user={deletingUser}
+        onClose={() => setDeletingUser(null)}
+        onSuccess={handleDeleteSuccess}
+      />
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+          duration={4000}
+        />
+      )}
     </div>
   )
 }

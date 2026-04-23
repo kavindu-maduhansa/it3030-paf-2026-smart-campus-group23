@@ -3,6 +3,7 @@ package com.smartcampus.config;
 import com.smartcampus.security.SessionAuthenticationFilter;
 import com.smartcampus.service.CustomOAuth2UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -24,13 +25,20 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final SessionAuthenticationFilter sessionAuthenticationFilter;
 
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:5173",
+                "http://localhost:5174",
+                "http://localhost:5175",
                 "http://localhost:3000",
                 "http://127.0.0.1:5173",
+                "http://127.0.0.1:5174",
+                "http://127.0.0.1:5175",
                 "http://127.0.0.1:3000"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
@@ -78,11 +86,11 @@ public class SecurityConfig {
                 .userInfoEndpoint(userInfo -> userInfo
                     .userService(customOAuth2UserService)
                 )
-                .defaultSuccessUrl("http://localhost:5173/dashboard", true)
-                .failureUrl("http://localhost:5173/login?error=true")
+                .defaultSuccessUrl(frontendUrl + "/dashboard", true)
+                .failureUrl(frontendUrl + "/login?error=true")
             )
             .logout(logout -> logout
-                .logoutSuccessUrl("http://localhost:5173")
+                .logoutSuccessUrl(frontendUrl)
                 .permitAll()
             )
             .exceptionHandling(exception -> exception
