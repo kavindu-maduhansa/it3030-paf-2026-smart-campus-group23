@@ -1,22 +1,42 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   HiOutlineBolt,
   HiOutlineClipboardDocumentList,
   HiOutlineCpuChip,
-  HiOutlineExclamationTriangle,
   HiOutlineMapPin,
-  HiOutlineWrenchScrewdriver,
   HiOutlineBellAlert,
   HiOutlineChartBar,
+  HiOutlinePlus,
+  HiOutlineUserCircle,
+  HiOutlineEye,
+  HiOutlinePencilSquare,
+  HiOutlineTrash,
+  HiOutlineUserPlus,
+  HiOutlineXMark,
+  HiOutlineClock,
+  HiOutlineUser,
+  HiOutlineCheckCircle,
+  HiOutlinePaperClip,
+  HiOutlineChevronRight,
+  HiOutlineExclamationTriangle,
 } from 'react-icons/hi2'
-import { DashboardDecor, KpiMini, Pill, SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
+import { DashboardDecor, Pill, SectionHeader, panelLg, tilePanel, featureCard, iconBase } from './dashboard/dashboardUi'
 import { useAuth } from '../services/useAuth'
+import { 
+  getAssignedTickets, 
+  updateTicketStatus,
+  updateTicket,
+  deleteTicket,
+  selfAssign,
+  type TicketResponseDTO 
+} from '../services/ticketService'
+import { formatDistanceToNow } from 'date-fns'
+import CommentSection from '../components/CommentSection'
 
-const activeWorkQueue = [
-  { id: 'TK-1842', title: 'Projector flicker · Hall A', priority: 'high' as const, status: 'IN_PROGRESS', due: 'Today 16:00' },
-  { id: 'TK-1839', title: 'HVAC noise · Bldg B L2', priority: 'medium' as const, status: 'OPEN', due: 'Tomorrow' },
-  { id: 'TK-1835', title: 'Lab PC 7 disk warning', priority: 'low' as const, status: 'OPEN', due: 'Fri' },
-  { id: 'TK-1821', title: 'Network drop · Lab 5', priority: 'high' as const, status: 'IN_PROGRESS', due: '2h ago' },
+const CATEGORIES = [
+  'Electrical', 'Plumbing', 'IT & Network', 'AV & Projector', 
+  'HVAC / Air Con', 'Furniture', 'Janitorial', 'Other'
 ]
 
 const equipmentHealth = [
@@ -34,7 +54,114 @@ const recentActivity = [
 
 export default function TechnicianDashboardPage() {
   const { user } = useAuth()
+  const [tickets, setTickets] = useState<TicketResponseDTO[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedTicket, setSelectedTicket] = useState<TicketResponseDTO | null>(null)
+  const [activeModal, setActiveModal] = useState<'view' | 'edit' | 'delete' | null>(null)
+  
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    category: '',
+    priority: '',
+    status: '',
+    contactDetails: ''
+  })
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<number[]>([])
+  const [isUpdating, setIsUpdating] = useState(false)
+
   const firstName = user?.name?.split(' ')[0] ?? 'Technician'
+
+  useEffect(() => {
+    fetchMyTickets()
+  }, [])
+
+  const fetchMyTickets = async () => {
+    try {
+      const response = await getAssignedTickets()
+      setTickets(response.data)
+    } catch (error) {
+      console.error('Failed to fetch assigned tickets:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCloseModal = () => {
+    setActiveModal(null)
+    setSelectedTicket(null)
+    setSelectedFiles([])
+    setRemovedAttachmentIds([])
+    setIsUpdating(false)
+  }
+
+  const handleOpenEdit = (t: TicketResponseDTO) => {
+    setSelectedTicket(t)
+    setEditForm({
+      title: t.title,
+      description: t.description,
+      category: t.category,
+      priority: t.priority,
+      status: t.status,
+      contactDetails: t.contactDetails || ''
+    })
+    setActiveModal('edit')
+  }
+
+  const handleUpdateTicket = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedTicket) return
+    setIsUpdating(true)
+    try {
+      await updateTicket(selectedTicket.id, {
+        ...editForm,
+        removedAttachmentIds
+      }, selectedFiles)
+      fetchMyTickets()
+      handleCloseModal()
+    } catch (err) {
+      console.error('Update failed', err)
+      alert('Failed to update ticket.')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleDeleteTicket = async () => {
+    if (!selectedTicket) return
+    try {
+      await deleteTicket(selectedTicket.id)
+      fetchMyTickets()
+      handleCloseModal()
+    } catch (err) {
+      console.error('Delete failed', err)
+      alert('Failed to delete ticket.')
+    }
+  }
+
+  const handleSelfAssign = async (ticketId: number) => {
+    try {
+      await selfAssign(ticketId)
+      fetchMyTickets()
+    } catch (err) {
+      console.error('Self assignment failed', err)
+      alert('Failed to self-assign.')
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files)
+      const currentAttachmentsCount = (selectedTicket?.attachments?.length || 0) - removedAttachmentIds.length
+      if (currentAttachmentsCount + selectedFiles.length + newFiles.length > 3) {
+        alert('Maximum 3 images allowed per ticket')
+        return
+      }
+      setSelectedFiles([...selectedFiles, ...newFiles])
+    }
+  }
 
   return (
     <DashboardDecor>
@@ -52,29 +179,44 @@ export default function TechnicianDashboardPage() {
               Monitor campus health, manage high-priority maintenance tickets, and track SLA performance.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              to="/maintenance"
-              className="rounded-lg bg-[#F97316]/15 px-4 py-2 text-sm font-semibold text-[#FB923C] ring-1 ring-[#F97316]/30 transition-all hover:bg-[#F97316]/25"
-            >
-              All Tickets
-            </Link>
-            <Link
-              to="/"
-              className="rounded-lg border border-white/15 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-[#94A3B8] transition-colors hover:border-white/25 hover:text-white"
-            >
-              Back to Home
-            </Link>
-          </div>
         </div>
 
-        {/* Global Stats */}
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiMini label="My Active Jobs" value="4" hint="2 High priority" accent="from-orange-500/40 to-transparent" />
-          <KpiMini label="SLA Compliance" value="96.2%" hint="+1.4% this week" accent="from-emerald-500/40 to-transparent" />
-          <KpiMini label="Parts Pending" value="3" hint="Expected tomorrow" accent="from-blue-500/40 to-transparent" />
-          <KpiMini label="Open Campus Alerts" value="2" hint="HVAC, Power" accent="from-rose-500/40 to-transparent" />
+        {/* Quick Action Cards */}
+        <div className="mt-8 grid gap-6 sm:grid-cols-3">
+          <Link to="/maintenance" className={featureCard}>
+             <span className={`${iconBase} bg-blue-500/10 text-blue-500`}>
+                <HiOutlineClipboardDocumentList className="h-7 w-7" />
+             </span>
+             <h3 className="text-lg font-bold text-white">All Tickets</h3>
+             <p className="mt-2 text-sm text-[#94A3B8]">Browse and manage all campus maintenance requests.</p>
+             <span className="mt-4 text-sm font-semibold text-[#3B82F6] opacity-0 transition-opacity group-hover:opacity-100">
+                View All →
+             </span>
+          </Link>
+
+          <Link to="/maintenance?filter=mine" className={featureCard}>
+             <span className={`${iconBase} bg-emerald-500/10 text-emerald-500`}>
+                <HiOutlineUserCircle className="h-7 w-7" />
+             </span>
+             <h3 className="text-lg font-bold text-white">My Jobs</h3>
+             <p className="mt-2 text-sm text-[#94A3B8]">Quickly access tickets assigned to your active queue.</p>
+             <span className="mt-4 text-sm font-semibold text-emerald-500 opacity-0 transition-opacity group-hover:opacity-100">
+                My Queue →
+             </span>
+          </Link>
+
+          <Link to="/maintenance/report" className={featureCard}>
+             <span className={`${iconBase} bg-orange-500/10 text-orange-500`}>
+                <HiOutlinePlus className="h-7 w-7" />
+             </span>
+             <h3 className="text-lg font-bold text-white">New Ticket</h3>
+             <p className="mt-2 text-sm text-[#94A3B8]">Submit a new maintenance request or report an incident.</p>
+             <span className="mt-4 text-sm font-semibold text-orange-500 opacity-0 transition-opacity group-hover:opacity-100">
+                Add Ticket →
+             </span>
+          </Link>
         </div>
+
       </section>
 
       {/* Main Content Grid */}
@@ -88,48 +230,110 @@ export default function TechnicianDashboardPage() {
                   <HiOutlineClipboardDocumentList className="h-6 w-6 text-[#3B82F6]" />
                   Active Work Queue
                 </h3>
-                <span className="text-xs font-mono text-[#64748B]">Last updated: 2m ago</span>
              </div>
              
              <div className="space-y-4">
-                {activeWorkQueue.map((ticket) => (
-                  <div key={ticket.id} className="group relative flex flex-col gap-4 rounded-xl border border-[#1F2937] bg-[#0F172A]/50 p-4 transition-all hover:border-[#3B82F6]/30 hover:bg-[#0F172A]/80 sm:flex-row sm:items-center">
-                    <div className="flex flex-1 flex-col">
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-xs text-[#64748B]">{ticket.id}</span>
-                        <Pill variant={ticket.priority === 'high' ? 'danger' : ticket.priority === 'medium' ? 'warning' : 'default'}>
-                          {ticket.priority.toUpperCase()}
-                        </Pill>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider ${ticket.status === 'IN_PROGRESS' ? 'text-blue-400' : 'text-slate-500'}`}>
-                          {ticket.status.replace('_', ' ')}
-                        </span>
-                      </div>
-                      <h4 className="mt-2 text-base font-semibold text-white group-hover:text-[#3B82F6] transition-colors">{ticket.title}</h4>
-                      <div className="mt-2 flex items-center gap-4 text-xs text-[#94A3B8]">
-                        <span className="flex items-center gap-1">
-                          <HiOutlineMapPin className="h-4 w-4" />
-                          Smart Campus
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <HiOutlineBolt className="h-4 w-4" />
-                          Due {ticket.due}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="shrink-0">
-                      <Link 
-                        to={`/maintenance`}
-                        className="inline-flex items-center gap-1 rounded-lg border border-[#334155] px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-[#3B82F6] hover:border-[#3B82F6]"
-                      >
-                        Action →
-                      </Link>
-                    </div>
+                {isLoading ? (
+                  <div className="py-12 text-center text-[#64748B]">
+                    <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-blue-500/20 border-t-blue-500 mb-4"></div>
+                    <p>Connecting to database...</p>
                   </div>
-                ))}
+                ) : tickets.length === 0 ? (
+                  <div className="py-12 text-center rounded-xl border border-dashed border-[#1F2937] bg-[#0F172A]/30">
+                    <p className="text-[#64748B]">Your queue is clear. No active jobs assigned.</p>
+                  </div>
+                ) : (
+                  tickets.slice(0, 4).map((t) => (
+                    <li 
+                      key={t.id} 
+                      className="group relative list-none overflow-hidden rounded-2xl border border-[#1F2937] bg-[#0F172A] p-5 transition-all hover:border-[#3B82F6]/50 hover:shadow-2xl hover:shadow-blue-500/10"
+                    >
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-1 gap-4">
+                          {/* Left: Status Icon */}
+                          <div className={`mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                            t.status === 'OPEN' ? 'bg-orange-500/10 text-orange-500' :
+                            t.status === 'IN_PROGRESS' ? 'bg-blue-500/10 text-blue-500' :
+                            'bg-emerald-500/10 text-emerald-500'
+                          }`}>
+                            <HiOutlineBolt className="h-5 w-5" />
+                          </div>
+
+                          <div className="flex-1 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-mono text-xs font-bold text-[#475569]">TK-{t.id}</span>
+                              <Pill variant={t.priority === 'URGENT' || t.priority === 'HIGH' ? 'danger' : t.priority === 'MEDIUM' ? 'warning' : 'default'}>
+                                {t.priority}
+                              </Pill>
+                              <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                                t.status === 'OPEN' ? 'text-orange-400' :
+                                t.status === 'IN_PROGRESS' ? 'text-blue-400' :
+                                'text-emerald-400'
+                              }`}>
+                                {t.status.replace('_', ' ')}
+                              </span>
+                            </div>
+                            <h3 className="text-lg font-bold text-white transition-colors group-hover:text-[#3B82F6]">
+                              {t.title}
+                            </h3>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1 text-xs font-medium text-[#64748B]">
+                              <span className="flex items-center gap-1.5">
+                                <HiOutlineUser className="h-3.5 w-3.5" />
+                                {t.userName}
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <HiOutlineMapPin className="h-3.5 w-3.5" />
+                                {t.resourceName || t.location}
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <HiOutlineClock className="h-3.5 w-3.5" />
+                                {formatDistanceToNow(new Date(t.createdAt), { addSuffix: true })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 sm:ml-4">
+                          <button 
+                            onClick={() => { setSelectedTicket(t); setActiveModal('view'); }}
+                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1F2937] bg-[#111827] text-[#64748B] transition-all hover:border-[#3B82F6] hover:text-[#3B82F6] hover:shadow-lg hover:shadow-blue-500/10"
+                            title="View"
+                          >
+                            <HiOutlineEye className="h-5 w-5" />
+                          </button>
+                          <button 
+                            onClick={() => handleOpenEdit(t)}
+                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1F2937] bg-[#111827] text-[#64748B] transition-all hover:border-amber-500/50 hover:text-amber-500 hover:shadow-lg hover:shadow-amber-500/10"
+                            title="Update"
+                          >
+                            <HiOutlinePencilSquare className="h-5 w-5" />
+                          </button>
+                          {!t.assignedToId && (
+                            <button 
+                              onClick={() => handleSelfAssign(t.id)}
+                              className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1F2937] bg-[#111827] text-[#64748B] transition-all hover:border-emerald-500/50 hover:text-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10"
+                              title="Claim Ticket"
+                            >
+                              <HiOutlineUserPlus className="h-5 w-5" />
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => { setSelectedTicket(t); setActiveModal('delete'); }}
+                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1F2937] bg-[#111827] text-[#64748B] transition-all hover:border-rose-500/50 hover:text-rose-500 hover:shadow-lg hover:shadow-rose-500/10"
+                            title="Remove"
+                          >
+                            <HiOutlineTrash className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </div>
+                    </li>
+                  ))
+                )}
              </div>
           </div>
 
-          {/* Equipment Status Section */}
+          {/* Infrastructure Health */}
           <div className={panelLg}>
             <SectionHeader 
               title="Infrastructure Health" 
@@ -166,9 +370,8 @@ export default function TechnicianDashboardPage() {
           </div>
         </div>
 
-        {/* Right Column: Sidebar info */}
+        {/* Right Column */}
         <div className="space-y-6">
-          {/* Alerts & Notifications */}
           <div className={`${tilePanel} border-rose-500/20 bg-gradient-to-br from-rose-500/5 to-transparent`}>
             <h3 className="flex items-center gap-2 text-sm font-bold text-white">
               <HiOutlineBellAlert className="h-5 w-5 text-rose-500" />
@@ -177,12 +380,11 @@ export default function TechnicianDashboardPage() {
             <div className="mt-4 space-y-3">
               <div className="rounded-lg border border-rose-500/20 bg-[#0F172A] p-3">
                 <p className="text-xs font-bold text-rose-400 uppercase">Emergency - Power</p>
-                <p className="mt-1 text-sm text-[#CBD5E1]">Fluctuating voltage in IT Lab 2. Shutdown procedures suggested if persistent.</p>
+                <p className="mt-1 text-sm text-[#CBD5E1]">Fluctuating voltage in IT Lab 2.</p>
               </div>
             </div>
           </div>
 
-          {/* Activity Feed */}
           <div className={panelLg}>
              <h3 className="flex items-center gap-2 text-sm font-bold text-white mb-4">
                 <HiOutlineChartBar className="h-5 w-5 text-[#3B82F6]" />
@@ -195,37 +397,275 @@ export default function TechnicianDashboardPage() {
                       {act.user.split(' ')[0][0]}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[#CBD5E1] truncate">
-                        <span className="font-bold">{act.user}</span> {act.action}
-                      </p>
-                      <p className="text-[10px] text-[#64748B]">{act.time}</p>
+                      <p className="text-sm text-[#CBD5E1] truncate font-semibold">{act.user}</p>
+                      <p className="text-[10px] text-[#64748B]">{act.action} · {act.time}</p>
                     </div>
                   </li>
                 ))}
              </ul>
           </div>
 
-          {/* Shift Handover Hint */}
           <div className={`${tilePanel} border-blue-500/20 bg-[#0F172A]`}>
              <h3 className="text-xs font-bold text-[#3B82F6] uppercase tracking-wider">Handover Note</h3>
              <p className="mt-2 text-sm text-[#94A3B8] italic">
-               "Bldg C main riser is being inspected at 18:00. Please ensure all Lab 5 tickets are closed before end of shift."
+               "Bldg C main riser is being inspected at 18:00."
              </p>
-             <p className="mt-2 text-[10px] text-[#64748B]">— Lead Technician</p>
-          </div>
-
-          {/* Tools & Safety Quick Access */}
-          <div className={tilePanel}>
-            <h3 className="text-sm font-bold text-white mb-3">Field Resources</h3>
-            <div className="grid grid-cols-2 gap-2">
-               <button className="rounded-lg bg-[#334155] p-2 text-[10px] font-bold text-white hover:bg-[#475569]">SAFETY LOGS</button>
-               <button className="rounded-lg bg-[#334155] p-2 text-[10px] font-bold text-white hover:bg-[#475569]">EQUIP. MAPS</button>
-               <button className="rounded-lg bg-[#334155] p-2 text-[10px] font-bold text-white hover:bg-[#475569]">VENDOR COMMS</button>
-               <button className="rounded-lg bg-[#334155] p-2 text-[10px] font-bold text-white hover:bg-[#475569]">SLA REPORT</button>
-            </div>
           </div>
         </div>
       </div>
+
+      {/* MODALS */}
+      {activeModal && selectedTicket && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={handleCloseModal} />
+          <div className="relative w-full max-w-4xl transform overflow-hidden rounded-[2.5rem] border border-[#334155] bg-[#0F172A] shadow-2xl transition-all">
+            
+            {activeModal === 'view' && (
+              <div className="flex h-[85vh] flex-col lg:flex-row">
+                {/* Left: Content */}
+                <div className="flex flex-1 flex-col overflow-y-auto p-8 lg:p-10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-xs font-bold text-[#475569]">TK-{selectedTicket.id}</span>
+                      <Pill variant={selectedTicket.priority === 'HIGH' || selectedTicket.priority === 'URGENT' ? 'danger' : 'warning'}>
+                        {selectedTicket.priority}
+                      </Pill>
+                    </div>
+                    <button onClick={handleCloseModal} className="rounded-full bg-white/5 p-2 text-[#64748B] hover:text-white transition-colors lg:hidden">
+                      <HiOutlineXMark className="h-6 w-6" />
+                    </button>
+                  </div>
+
+                  <h2 className="mt-4 text-3xl font-bold text-white leading-tight">{selectedTicket.title}</h2>
+                  
+                  <div className="mt-10 grid grid-cols-2 gap-8 border-y border-[#1F2937]/50 py-8">
+                    <div className="space-y-6">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Reporter</p>
+                        <p className="mt-2 text-sm font-bold text-white">{selectedTicket.userName}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Location</p>
+                        <p className="mt-2 flex items-center gap-2 text-sm font-bold text-white">
+                          <HiOutlineMapPin className="h-4 w-4 text-[#3B82F6]" />
+                          {selectedTicket.resourceName || selectedTicket.location}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-6">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Current Status</p>
+                        <p className="mt-2 text-sm font-black uppercase tracking-wider text-[#3B82F6]">{selectedTicket.status.replace('_', ' ')}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Date Logged</p>
+                        <p className="mt-2 text-sm font-bold text-white">{formatDistanceToNow(new Date(selectedTicket.createdAt), { addSuffix: true })}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-10">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Incident Details</p>
+                    <p className="mt-4 text-base leading-relaxed text-[#94A3B8] font-medium">{selectedTicket.description}</p>
+                  </div>
+
+                  {selectedTicket.imageUrls && selectedTicket.imageUrls.length > 0 && (
+                    <div className="mt-10">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569] mb-4">Evidence & Photos</p>
+                      <div className="flex flex-wrap gap-4">
+                        {selectedTicket.imageUrls.map((url, i) => (
+                          <a key={i} href={url} target="_blank" rel="noreferrer" className="relative group overflow-hidden rounded-3xl border border-[#1F2937] hover:border-[#3B82F6]/50 transition-all">
+                            <img src={url} alt="Attachment" className="h-32 w-32 object-cover transition-transform duration-500 group-hover:scale-110" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                              <HiOutlineEye className="text-white h-6 w-6" />
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right: Comments */}
+                <div className="flex flex-1 flex-col bg-[#0F172A] border-l border-[#1F2937]">
+                  <div className="flex items-center justify-between border-b border-[#1F2937] px-8 py-4 bg-[#111827]/50">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-widest">Conversation</h3>
+                    <button onClick={handleCloseModal} className="hidden lg:block rounded-full bg-white/5 p-2 text-[#64748B] hover:text-white transition-colors">
+                      <HiOutlineXMark className="h-6 w-6" />
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <CommentSection ticketId={selectedTicket.id} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeModal === 'edit' && (
+              <form onSubmit={handleUpdateTicket} className="flex flex-col">
+                <div className="flex items-center justify-between border-b border-[#1F2937] p-8">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">Edit Ticket Details</h2>
+                    <p className="mt-1 text-sm text-[#64748B]">Update essential information and manage attachments.</p>
+                  </div>
+                  <button type="button" onClick={handleCloseModal} className="rounded-full bg-white/5 p-2 text-[#64748B] hover:text-white transition-colors">
+                    <HiOutlineXMark className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <div className="max-h-[70vh] overflow-y-auto p-8">
+                  <div className="grid gap-8 lg:grid-cols-2">
+                    <div className="space-y-6">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Ticket Title</label>
+                        <input 
+                          type="text" 
+                          value={editForm.title} 
+                          onChange={(e) => setEditForm({...editForm, title: e.target.value})}
+                          className="mt-2 w-full rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3 text-sm text-white focus:border-[#3B82F6] focus:ring-0" 
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Category</label>
+                        <select 
+                          value={editForm.category} 
+                          onChange={(e) => setEditForm({...editForm, category: e.target.value})}
+                          className="mt-2 w-full rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3 text-sm text-white focus:border-[#3B82F6] focus:ring-0"
+                        >
+                          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Ticket Status</label>
+                        <div className="mt-2 flex gap-3">
+                          {['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map(s => (
+                            <button 
+                              key={s} type="button"
+                              onClick={() => setEditForm({...editForm, status: s})}
+                              className={`flex-1 rounded-xl border py-2 text-[9px] font-bold transition-all ${
+                                editForm.status === s 
+                                ? 'border-[#3B82F6] bg-blue-500/10 text-[#3B82F6]' 
+                                : 'border-[#1F2937] bg-[#0F172A] text-[#475569] hover:border-[#334155]'
+                              }`}
+                            >
+                              {s.replace('_', ' ')}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Priority Level</label>
+                        <div className="mt-2 flex gap-3">
+                          {['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map(p => (
+                            <button 
+                              key={p} type="button"
+                              onClick={() => setEditForm({...editForm, priority: p})}
+                              className={`flex-1 rounded-xl border py-2 text-[10px] font-bold transition-all ${
+                                editForm.priority === p 
+                                ? 'border-[#3B82F6] bg-blue-500/10 text-[#3B82F6]' 
+                                : 'border-[#1F2937] bg-[#0F172A] text-[#475569] hover:border-[#334155]'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Full Description</label>
+                        <textarea 
+                          rows={4} 
+                          value={editForm.description} 
+                          onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                          className="mt-2 w-full rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3 text-sm text-white focus:border-[#3B82F6] focus:ring-0" 
+                        />
+                      </div>
+                      
+                      {/* Image Management */}
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Attachments (Max 3)</label>
+                        <div className="mt-3 flex flex-wrap gap-3">
+                          {selectedTicket.attachments?.filter(a => !removedAttachmentIds.includes(a.id)).map(a => (
+                            <div key={a.id} className="group relative h-20 w-20 overflow-hidden rounded-xl border border-[#1F2937]">
+                              <img src={a.url} alt="Attached" className="h-full w-full object-cover" />
+                              <button 
+                                type="button"
+                                onClick={() => setRemovedAttachmentIds([...removedAttachmentIds, a.id])}
+                                className="absolute top-1 right-1 h-5 w-5 rounded-full bg-rose-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <HiOutlineXMark className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                          
+                          {selectedFiles.map((file, i) => (
+                            <div key={i} className="group relative h-20 w-20 overflow-hidden rounded-xl border border-[#3B82F6]/50 bg-blue-500/5">
+                              <div className="flex h-full w-full flex-col items-center justify-center text-[#3B82F6]">
+                                <HiOutlinePaperClip className="h-6 w-6" />
+                                <span className="mt-1 text-[8px] font-bold truncate px-1 w-full text-center">{file.name}</span>
+                              </div>
+                              <button 
+                                type="button"
+                                onClick={() => setSelectedFiles(selectedFiles.filter((_, idx) => idx !== i))}
+                                className="absolute top-1 right-1 h-5 w-5 rounded-full bg-rose-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <HiOutlineXMark className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+
+                          {((selectedTicket.attachments?.length || 0) - removedAttachmentIds.length + selectedFiles.length) < 3 && (
+                            <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#1F2937] text-[#475569] transition-all hover:border-[#3B82F6] hover:text-[#3B82F6] hover:bg-blue-500/5">
+                              <HiOutlinePlus className="h-6 w-6" />
+                              <input type="file" className="hidden" accept="image/*" multiple onChange={handleFileChange} />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-[#1F2937] bg-[#111827]/50 p-8 flex justify-end gap-4">
+                  <button type="button" onClick={handleCloseModal} className="rounded-2xl border border-[#334155] px-8 py-3 text-sm font-bold text-white hover:bg-white/5 transition-all">
+                    Discard Changes
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={isUpdating}
+                    className="rounded-2xl bg-[#3B82F6] px-10 py-3 text-sm font-bold text-white hover:bg-blue-500 hover:shadow-xl hover:shadow-blue-500/20 transition-all disabled:opacity-50"
+                  >
+                    {isUpdating ? 'Saving...' : 'Update Ticket'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {activeModal === 'delete' && (
+              <div className="flex flex-col items-center p-12 text-center">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-rose-500/10 text-rose-500 shadow-inner">
+                  <HiOutlineExclamationTriangle className="h-10 w-10" />
+                </div>
+                <h2 className="mt-8 text-3xl font-bold text-white">Permanent Deletion</h2>
+                <p className="mt-4 max-w-md text-base leading-relaxed text-[#94A3B8]">
+                  Are you absolutely sure? This will permanently remove ticket <span className="font-mono font-bold text-white">TK-{selectedTicket.id}</span> from the campus records. This operation cannot be reversed.
+                </p>
+                <div className="mt-12 flex w-full flex-col gap-4 sm:flex-row sm:justify-center">
+                  <button onClick={handleCloseModal} className="rounded-2xl border border-[#334155] px-10 py-3.5 text-sm font-bold text-white hover:bg-white/5 transition-all order-2 sm:order-1">
+                    Keep Ticket
+                  </button>
+                  <button onClick={handleDeleteTicket} className="rounded-2xl bg-rose-600 px-10 py-3.5 text-sm font-bold text-white hover:bg-rose-500 hover:shadow-2xl hover:shadow-rose-500/30 transition-all order-1 sm:order-2">
+                    Confirm Deletion
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </DashboardDecor>
   )
 }

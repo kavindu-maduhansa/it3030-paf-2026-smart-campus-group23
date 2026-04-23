@@ -66,6 +66,15 @@ public class TicketController {
         return ResponseEntity.ok(ticketService.getMyTickets(currentUser));
     }
 
+    @GetMapping("/assigned")
+    public ResponseEntity<List<TicketResponseDTO>> getAssignedTickets(
+            @AuthenticationPrincipal OAuth2User oauth2User,
+            HttpServletRequest request) {
+        
+        User currentUser = resolveUser(oauth2User, request);
+        return ResponseEntity.ok(ticketService.getAssignedTickets(currentUser));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<TicketResponseDTO> getTicketById(@PathVariable Long id) {
         return ResponseEntity.ok(ticketService.getTicketById(id));
@@ -83,6 +92,19 @@ public class TicketController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/{id}")
+    public ResponseEntity<TicketResponseDTO> updateTicket(
+            @PathVariable Long id,
+            @Valid @RequestPart("ticket") TicketRequestDTO ticketRequestDTO,
+            @RequestPart(value = "images", required = false) org.springframework.web.multipart.MultipartFile[] images,
+            @AuthenticationPrincipal OAuth2User oauth2User,
+            HttpServletRequest request) {
+        
+        User currentUser = resolveUser(oauth2User, request);
+        TicketResponseDTO response = ticketService.updateTicket(id, ticketRequestDTO, currentUser, images);
+        return ResponseEntity.ok(response);
+    }
+
     @PatchMapping("/{id}/assign")
     public ResponseEntity<TicketResponseDTO> assignTechnician(
             @PathVariable Long id,
@@ -92,6 +114,17 @@ public class TicketController {
         
         User currentUser = resolveUser(oauth2User, request);
         TicketResponseDTO response = ticketService.assignTechnician(id, technicianId, currentUser);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/self-assign")
+    public ResponseEntity<TicketResponseDTO> selfAssign(
+            @PathVariable Long id,
+            @AuthenticationPrincipal OAuth2User oauth2User,
+            HttpServletRequest request) {
+        
+        User currentUser = resolveUser(oauth2User, request);
+        TicketResponseDTO response = ticketService.assignTechnician(id, currentUser.getId(), currentUser);
         return ResponseEntity.ok(response);
     }
 
@@ -115,6 +148,40 @@ public class TicketController {
         User currentUser = resolveUser(oauth2User, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(commentService.addComment(id, commentRequestDTO, currentUser));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTicket(
+            @PathVariable Long id,
+            @AuthenticationPrincipal OAuth2User oauth2User,
+            HttpServletRequest request) {
+        
+        User currentUser = resolveUser(oauth2User, request);
+        ticketService.deleteTicket(id, currentUser);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/images/{filename:.+}")
+    public ResponseEntity<org.springframework.core.io.Resource> getTicketImage(@PathVariable String filename) {
+        org.springframework.core.io.Resource file = ticketService.loadTicketImage(filename);
+        
+        String contentType = "application/octet-stream";
+        try {
+            if (filename.toLowerCase().endsWith(".jpg") || filename.toLowerCase().endsWith(".jpeg")) {
+                contentType = "image/jpeg";
+            } else if (filename.toLowerCase().endsWith(".png")) {
+                contentType = "image/png";
+            } else if (filename.toLowerCase().endsWith(".gif")) {
+                contentType = "image/gif";
+            }
+        } catch (Exception e) {
+            // Fallback to octet-stream
+        }
+
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.parseMediaType(contentType))
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getFilename() + "\"")
+                .body(file);
     }
 
     /**
