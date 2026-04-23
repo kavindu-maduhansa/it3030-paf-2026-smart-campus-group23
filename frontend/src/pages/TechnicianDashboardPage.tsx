@@ -127,7 +127,7 @@ export default function TechnicianDashboardPage() {
         removedAttachmentIds
       }, selectedFiles)
       fetchMyTickets()
-      
+
       if (editForm.status === 'CLOSED' || editForm.status === 'RESOLVED') {
         const updated = tickets.find(t => t.id === selectedTicket.id) || selectedTicket
         setSelectedTicket({ ...updated, status: editForm.status })
@@ -253,8 +253,8 @@ export default function TechnicianDashboardPage() {
             <span className={`${iconBase} bg-rose-500/10 text-rose-500`}>
               <HiOutlineBellAlert className="h-7 w-7" />
             </span>
-            <h3 className="text-lg font-bold text-white">Campus Alerts</h3>
-            <p className="mt-2 text-sm text-[#94A3B8]">Manage and broadcast critical operations updates to all users.</p>
+            <h3 className="text-lg font-bold text-white">Alerts</h3>
+            <p className="mt-2 text-sm text-[#94A3B8]">Manage and broadcast critical operations updates.</p>
             <span className="mt-4 text-sm font-semibold text-rose-500 opacity-0 transition-opacity group-hover:opacity-100">
               Manage Alerts →
             </span>
@@ -508,12 +508,12 @@ export default function TechnicianDashboardPage() {
                   )}
 
                   <div className="mt-8 pt-8 border-t border-[#1F2937]/50">
-                    <CommentSection 
-                  ticketId={selectedTicket.id} 
-                  autoFocus={showCommentPrompt} 
-                  reporterId={selectedTicket.userId}
-                  assigneeId={selectedTicket.assignedToId}
-                />
+                    <CommentSection
+                      ticketId={selectedTicket.id}
+                      autoFocus={showCommentPrompt}
+                      reporterId={selectedTicket.userId}
+                      assigneeId={selectedTicket.assignedToId}
+                    />
                   </div>
                 </div>
                 <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-[#1F2937]/50 p-8">

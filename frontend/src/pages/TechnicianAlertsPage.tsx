@@ -28,7 +28,7 @@ export default function TechnicianAlertsPage() {
     title: '',
     message: '',
     type: 'INFO' as 'INFO' | 'WARNING' | 'CRITICAL',
-    targetRoles: [] as string[]
+    targetRoles: ['TECHNICIAN']
   })
 
   useEffect(() => {
@@ -49,8 +49,7 @@ export default function TechnicianAlertsPage() {
 
   const handleCreateAlert = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.title || !formData.message || formData.targetRoles.length === 0) {
-      if (formData.targetRoles.length === 0) alert('Please select at least one target role');
+    if (!formData.title || !formData.message) {
       return
     }
 
@@ -70,7 +69,7 @@ export default function TechnicianAlertsPage() {
       await fetchAlerts()
       setShowModal(false)
       setEditingId(null)
-      setFormData({ title: '', message: '', type: 'INFO', targetRoles: [] })
+      setFormData({ title: '', message: '', type: 'INFO', targetRoles: ['TECHNICIAN'] })
     } catch (error: any) {
       console.error('Failed to save alert:', error)
       const errorMessage = error.response?.data || `Failed to ${editingId ? 'update' : 'broadcast'} alert`
@@ -106,9 +105,9 @@ export default function TechnicianAlertsPage() {
   return (
     <div className="mx-auto max-w-5xl pb-20">
       <SectionHeader
-        eyebrow="Campus Security"
+        eyebrow="operations"
         title="Technician Alerts"
-        subtitle="Manage and broadcast critical operations updates to all users."
+        subtitle="Manage and broadcast critical operations updates."
         action={
           <div className="flex gap-3">
             <button
@@ -121,7 +120,7 @@ export default function TechnicianAlertsPage() {
             <button
               onClick={() => {
                 setEditingId(null)
-                setFormData({ title: '', message: '', type: 'INFO', targetRoles: [] })
+                setFormData({ title: '', message: '', type: 'INFO', targetRoles: ['TECHNICIAN'] })
                 setShowModal(true)
               }}
               className="flex items-center gap-2 rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-bold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20"
@@ -256,29 +255,6 @@ export default function TechnicianAlertsPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#475569] mb-3">Target Audience (Pick Multiple)</label>
-                <div className="flex flex-wrap gap-2">
-                  {['STUDENT', 'LECTURER', 'ADMIN', 'TECHNICIAN'].map((role) => (
-                    <button
-                      key={role}
-                      type="button"
-                      onClick={() => {
-                        const newRoles = formData.targetRoles.includes(role)
-                          ? formData.targetRoles.filter(r => r !== role)
-                          : [...formData.targetRoles, role];
-                        setFormData({ ...formData, targetRoles: newRoles });
-                      }}
-                      className={`rounded-xl border px-4 py-2 text-[10px] font-bold transition-all ${formData.targetRoles.includes(role)
-                        ? 'border-[#3B82F6] bg-blue-500/10 text-[#3B82F6] ring-1 ring-[#3B82F6]'
-                        : 'border-[#1F2937] bg-[#111827] text-[#475569] hover:border-[#334155]'
-                        }`}
-                    >
-                      {role}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-[#475569] mb-3">Detailed Message</label>
