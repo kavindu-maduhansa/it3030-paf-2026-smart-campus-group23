@@ -21,9 +21,8 @@ public class SmartCampusBackendApplication {
 	}
 
 	/**
-	 * If the active profile contains {@code dev} and the configured default port is 8080 but
-	 * something else is already listening there, switch to the first free port in a local
-	 * fallback range so {@code mvnw spring-boot:run} does not fail when previous JVMs are still
+	 * In dev mode, if the effective local port is already in use, switch to the first free
+	 * fallback port so {@code mvnw spring-boot:run} does not fail when previous JVMs are still
 	 * running.
 	 */
 	private static void maybeUseAlternatePortIfDefaultBusy() {
@@ -33,34 +32,43 @@ public class SmartCampusBackendApplication {
 		}
 		String envPort = System.getenv("PORT");
 		String propPort = System.getProperty("PORT");
-		String effective = firstNonBlank(envPort, propPort, "8080");
-		if (!"8080".equals(effective)) {
+		String effective = firstNonBlank(envPort, propPort, "8081");
+		int effectivePort;
+		try {
+			effectivePort = Integer.parseInt(effective);
+		} catch (NumberFormatException ignored) {
 			return;
 		}
-		try (ServerSocket ignored = new ServerSocket(8080)) {
-			// port free
-		} catch (IOException e) {
-			int fallbackPort = findAvailablePort(8081, 20);
-			if (fallbackPort == -1) {
-				System.err.println("[smart-campus] Port 8080 is busy and no free fallback port was found in 8081-8100.");
-				return;
-			}
-			System.setProperty("PORT", Integer.toString(fallbackPort));
-			System.err.println("[smart-campus] Port 8080 is in use; using PORT=" + fallbackPort + " (dev). "
-					+ "Point Vite VITE_BACKEND_ORIGIN at the selected port or use backend/run-backend.ps1.");
+		if (isPortAvailable(effectivePort)) {
+			return;
 		}
+		int fallbackPort = findAvailablePort(effectivePort + 1, 20);
+		if (fallbackPort == -1) {
+			System.err.println("[smart-campus] Port " + effectivePort
+					+ " is busy and no free fallback port was found in the next 20 ports.");
+			return;
+		}
+		System.setProperty("PORT", Integer.toString(fallbackPort));
+		System.err.println("[smart-campus] Port " + effectivePort + " is in use; using PORT=" + fallbackPort + " (dev). "
+				+ "Point Vite VITE_BACKEND_ORIGIN at the selected port or use backend/run-backend.ps1.");
 	}
 
 	private static int findAvailablePort(int startPort, int attempts) {
 		for (int i = 0; i < attempts; i++) {
 			int candidate = startPort + i;
-			try (ServerSocket ignored = new ServerSocket(candidate)) {
+			if (isPortAvailable(candidate)) {
 				return candidate;
-			} catch (IOException ignored) {
-				// continue scanning
 			}
 		}
 		return -1;
+	}
+
+	private static boolean isPortAvailable(int port) {
+		try (ServerSocket ignored = new ServerSocket(port)) {
+			return true;
+		} catch (IOException ignored) {
+			return false;
+		}
 	}
 
 	private static String firstNonBlank(String a, String b, String fallback) {

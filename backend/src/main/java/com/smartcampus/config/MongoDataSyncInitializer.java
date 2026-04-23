@@ -20,7 +20,6 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,7 +44,6 @@ public class MongoDataSyncInitializer implements ApplicationRunner {
     private boolean autoSyncEnabled;
 
     @Override
-    @Transactional(readOnly = true)
     public void run(ApplicationArguments args) {
         if (!autoSyncEnabled) {
             log.info("MongoDB auto-sync disabled by property.");

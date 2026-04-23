@@ -104,6 +104,14 @@ public class UserService {
         return convertToDTO(updatedUser);
     }
 
+    @Transactional
+    public User updateCurrentUserName(String email, String name) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + email));
+        user.setName(name.trim());
+        return userRepository.save(user);
+    }
+
     private UserResponseDTO convertToDTO(User user) {
         return UserResponseDTO.builder()
                 .id(user.getId())
