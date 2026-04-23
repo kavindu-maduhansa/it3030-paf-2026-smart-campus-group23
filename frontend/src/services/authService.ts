@@ -63,6 +63,11 @@ export const loginWithGoogle = () => {
   window.location.href = `${getOAuthBaseUrl()}/oauth2/authorization/google`
 }
 
+export const updateProfile = async (name: string, picture?: string): Promise<User> => {
+  const response = await apiClient.put<User>(`${API_URL}/profile`, { name, picture })
+  return response.data
+}
+
 export const logout = async () => {
   try {
     await apiClient.post(`${API_URL}/logout`, {})

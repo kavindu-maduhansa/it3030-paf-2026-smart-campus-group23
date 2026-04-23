@@ -19,12 +19,35 @@ export interface NotificationStats {
   total: number
 }
 
+/** Normalize the raw API response so `id` is always a string and `read` is always a boolean */
+function normalize(raw: any): Notification {
+  return {
+    id: String(raw.id),
+    title: raw.title ?? '',
+    description: raw.description ?? '',
+    type: raw.type ?? 'resource',
+    severity: raw.severity ?? 'info',
+    createdAt: raw.createdAt ?? new Date().toISOString(),
+    read: raw.read === true || raw.read === 'true',
+  }
+}
+
 export const getNotifications = async (): Promise<Notification[]> => {
   try {
-    const response = await apiClient.get<Notification[]>('/api/admin/notifications')
-    return response.data || []
+    const response = await apiClient.get<any[]>('/api/admin/notifications')
+    return (response.data ?? []).map(normalize)
   } catch (error) {
     console.error('Failed to fetch notifications:', error)
+    return []
+  }
+}
+
+export const getUnreadNotifications = async (): Promise<Notification[]> => {
+  try {
+    const response = await apiClient.get<any[]>('/api/admin/notifications/unread')
+    return (response.data ?? []).map(normalize)
+  } catch (error) {
+    console.error('Failed to fetch unread notifications:', error)
     return []
   }
 }
@@ -32,7 +55,7 @@ export const getNotifications = async (): Promise<Notification[]> => {
 export const getNotificationStats = async (): Promise<NotificationStats> => {
   try {
     const response = await apiClient.get<NotificationStats>('/api/admin/notifications/stats')
-    return response.data || { resourceCount: 0, facilityCount: 0, bookingCount: 0, maintenanceCount: 0, ticketCount: 0, total: 0 }
+    return response.data ?? { resourceCount: 0, facilityCount: 0, bookingCount: 0, maintenanceCount: 0, ticketCount: 0, total: 0 }
   } catch (error) {
     console.error('Failed to fetch notification stats:', error)
     return { resourceCount: 0, facilityCount: 0, bookingCount: 0, maintenanceCount: 0, ticketCount: 0, total: 0 }
@@ -44,6 +67,7 @@ export const markNotificationAsRead = async (notificationId: string): Promise<vo
     await apiClient.put(`/api/admin/notifications/${notificationId}/read`)
   } catch (error) {
     console.error('Failed to mark notification as read:', error)
+    throw error
   }
 }
 
@@ -56,5 +80,6 @@ export const clearNotifications = async (type?: string): Promise<void> => {
     }
   } catch (error) {
     console.error('Failed to clear notifications:', error)
+    throw error
   }
 }

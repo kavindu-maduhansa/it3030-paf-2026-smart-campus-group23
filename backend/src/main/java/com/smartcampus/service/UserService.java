@@ -27,15 +27,37 @@ public class UserService {
     private final TicketRepository ticketRepository;
     private final CommentRepository commentRepository;
     private final PasswordEncoder passwordEncoder;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    @jakarta.annotation.PostConstruct
+    public void ensurePictureColumnExists() {
+        log.info("Checking for 'picture' column in 'users' table...");
+        try {
+            jdbcTemplate.execute("ALTER TABLE users ADD COLUMN picture VARCHAR(1024) DEFAULT NULL");
+            log.info("Successfully added 'picture' column to 'users' table.");
+        } catch (Exception e) {
+            // Probably already exists, which is fine
+            log.info("Note: 'picture' column check finished (it likely already exists).");
+        }
+    }
 
     @Transactional
-    public User findOrCreateUser(String email, String name, String provider) {
+    public User findOrCreateUser(String email, String name, String provider, String picture) {
         return userRepository.findByEmail(email)
+                .map(user -> {
+                    // Update picture if it changed
+                    if (picture != null && !picture.equals(user.getPicture())) {
+                        user.setPicture(picture);
+                        return userRepository.save(user);
+                    }
+                    return user;
+                })
                 .orElseGet(() -> {
                     log.info("Creating new user with email: {}", email);
                     User newUser = User.builder()
                             .email(email)
                             .name(name)
+                            .picture(picture)
                             .provider(provider)
                             .role(Role.STUDENT)
                             .build();
@@ -108,6 +130,20 @@ public class UserService {
         User updatedUser = userRepository.save(user);
         
         return convertToDTO(updatedUser);
+    }
+
+    @Transactional
+    public User updateProfile(Long id, String name, String picture) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        if (name != null && !name.isBlank()) {
+            user.setName(name.trim());
+        }
+        if (picture != null) {
+            user.setPicture(picture);
+        }
+        log.info("Profile updated for user {}", id);
+        return userRepository.save(user);
     }
 
     @Transactional

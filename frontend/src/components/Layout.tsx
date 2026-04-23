@@ -2,9 +2,11 @@ import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { HiMenuAlt3, HiX } from 'react-icons/hi'
+import { HiOutlinePencilSquare } from 'react-icons/hi2'
 import { useAuth } from '../services/useAuth'
 import { logout } from '../services/authService'
 import NotificationBadge from './NotificationBadge'
+import EditProfileModal from './EditProfileModal'
 
 type LayoutProps = {
   children: ReactNode
@@ -21,6 +23,7 @@ function navLinkClass(isActive: boolean) {
 
 export default function Layout({ children }: LayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [editProfileOpen, setEditProfileOpen] = useState(false)
   const { isAuthenticated, user } = useAuth()
 
   const closeMobile = () => setMobileOpen(false)
@@ -93,9 +96,28 @@ export default function Layout({ children }: LayoutProps) {
             {isAuthenticated && user ? (
               <>
                 <NotificationBadge />
-                <span className="text-sm text-[#94A3B8]">
-                  Welcome, <span className="font-medium text-white">{user.name}</span>
-                </span>
+                {/* Edit Profile button */}
+                <button
+                  type="button"
+                  id="edit-profile-trigger"
+                  onClick={() => setEditProfileOpen(true)}
+                  title="Edit profile"
+                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-[#94A3B8] transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  {user.picture ? (
+                    <img
+                      src={user.picture}
+                      alt={user.name}
+                      className="h-7 w-7 rounded-full object-cover ring-2 ring-[#3B82F6]/50"
+                    />
+                  ) : (
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#3B82F6] to-[#6366F1] text-xs font-bold text-white">
+                      {user.name?.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="font-medium text-white">{user.name}</span>
+                  <HiOutlinePencilSquare className="h-3.5 w-3.5 text-[#64748B]" />
+                </button>
                 <button
                   type="button"
                   onClick={handleLogout}
@@ -203,6 +225,9 @@ export default function Layout({ children }: LayoutProps) {
           </nav>
         </div>
       </header>
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal isOpen={editProfileOpen} onClose={() => setEditProfileOpen(false)} />
 
       <main className="flex-1">{children}</main>
 

@@ -16,14 +16,15 @@ import java.io.Serializable;
 @AllArgsConstructor
 public class SessionUser implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     private Long id;
     private String email;
     private String name;
     private Role role;
+    private String picture;
 
     public static SessionUser fromEntity(User user) {
-        return new SessionUser(user.getId(), user.getEmail(), user.getName(), user.getRole());
+        return new SessionUser(user.getId(), user.getEmail(), user.getName(), user.getRole(), user.getPicture());
     }
 }

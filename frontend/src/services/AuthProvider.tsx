@@ -14,14 +14,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const checkAuth = async () => {
     try {
       setLoading(true)
-      console.log('[AuthProvider] Checking authentication...')
       const userData = await getCurrentUser()
-      console.log('[AuthProvider] User data received:', userData)
-      if (userData) {
-        console.log('[AuthProvider] User authenticated:', { email: userData.email, role: userData.role })
-      } else {
-        console.log('[AuthProvider] User not authenticated')
-      }
       setUser(userData)
     } catch (error) {
       console.error('[AuthProvider] Auth check failed:', error)
@@ -41,6 +34,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     loading,
     isAuthenticated: !!user,
     checkAuth,
+    setUser,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

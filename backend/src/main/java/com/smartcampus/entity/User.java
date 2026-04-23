@@ -30,6 +30,9 @@ public class User {
     @Column
     private String password;
 
+    @Column(length = 1024)
+    private String picture;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;

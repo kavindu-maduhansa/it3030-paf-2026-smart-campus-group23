@@ -71,6 +71,7 @@ public class AuthController {
                 response.put("id", sessionUser.getId());
                 response.put("name", sessionUser.getName());
                 response.put("email", sessionUser.getEmail());
+                response.put("picture", sessionUser.getPicture());
                 response.put("role",
                         sessionUser.getRole() != null ? sessionUser.getRole().name() : Role.STUDENT.name());
                 return ResponseEntity.ok(response);
@@ -103,7 +104,8 @@ public class AuthController {
         // Fetch user from DB to get the ID for OAuth2 users
         String email = principal.getAttribute("email");
         if (email != null) {
-            User user = userService.findOrCreateUser(email, (String) principal.getAttribute("name"), "google");
+            String picture = principal.getAttribute("picture");
+            User user = userService.findOrCreateUser(email, (String) principal.getAttribute("name"), "google", picture);
             response.put("id", user.getId());
         }
 
@@ -210,6 +212,59 @@ public class AuthController {
         Map<String, String> response = new HashMap<>();
         response.put("message", "Logged out successfully");
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal OAuth2User principal,
+            HttpServletRequest request) {
+        try {
+            // Resolve current user from session or OAuth2
+            HttpSession session = request.getSession(false);
+            SessionUser sessionUser = null;
+            if (session != null) {
+                sessionUser = resolveSessionUser(session);
+            }
+
+            Long userId = null;
+            if (sessionUser != null) {
+                userId = sessionUser.getId();
+            } else if (principal != null) {
+                String email = principal.getAttribute("email");
+                var userOpt = userService.getAllUsers().stream()
+                        .filter(u -> u.getEmail().equals(email))
+                        .findFirst();
+                if (userOpt.isPresent()) userId = userOpt.get().getId();
+            }
+
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+            }
+
+            String newName = body.get("name");
+            String newPicture = body.get("picture");
+            User updated = userService.updateProfile(userId, newName, newPicture);
+
+            // Refresh the session user so subsequent /api/auth/user returns updated data
+            if (session != null && sessionUser != null) {
+                session.setAttribute("user", SessionUser.fromEntity(updated));
+            }
+
+            log.info("[Update Profile] Updated profile for user: {}", updated.getEmail());
+
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("id", updated.getId());
+            resp.put("name", updated.getName());
+            resp.put("email", updated.getEmail());
+            resp.put("picture", updated.getPicture());
+            resp.put("role", updated.getRole() != null ? updated.getRole().name() : Role.STUDENT.name());
+            resp.put("message", "Profile updated successfully");
+            return ResponseEntity.ok(resp);
+        } catch (Exception e) {
+            log.error("[Update Profile] Failed", e);
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
     }
 
     private static Map<String, Object> authSuccessBody(User user, String message) {

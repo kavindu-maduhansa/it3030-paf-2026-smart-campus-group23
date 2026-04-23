@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { HiOutlineEnvelope, HiOutlineShieldCheck, HiOutlineUserCircle } from 'react-icons/hi2'
+import { HiOutlineEnvelope, HiOutlineShieldCheck, HiOutlineUserCircle, HiOutlinePencilSquare } from 'react-icons/hi2'
 import { useAuth } from '../services/useAuth'
 import { SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
 import { normalizeCampusRole, ROLE_DASHBOARD } from './dashboard/roleDashboardConfig'
+import EditProfileModal from '../components/EditProfileModal'
 
 function initials(name: string | undefined): string {
   if (!name?.trim()) return '?'
@@ -17,6 +18,7 @@ export default function ProfilePage() {
   const role = normalizeCampusRole(user?.role)
   const roleLabel = ROLE_DASHBOARD[role].roleLabel
 
+  const [editOpen, setEditOpen] = useState(false)
   const [notifEmail, setNotifEmail] = useState(true)
   const [notifBookings, setNotifBookings] = useState(true)
   const [notifMaintenance, setNotifMaintenance] = useState(false)
@@ -42,9 +44,18 @@ export default function ProfilePage() {
           <div className="relative px-6 pb-8 pt-0 sm:px-8">
             <div className="-mt-14 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
               <div className="flex items-end gap-4">
-                <div className="flex h-28 w-28 items-center justify-center rounded-2xl border-4 border-[#111827] bg-gradient-to-br from-[#3B82F6] to-[#1d4ed8] text-2xl font-bold text-white shadow-lg shadow-[#3B82F6]/30">
-                  {initials(user?.name)}
-                </div>
+                {/* Avatar: show picture if set, else gradient initials */}
+                {user?.picture ? (
+                  <img
+                    src={user.picture}
+                    alt={user.name}
+                    className="h-28 w-28 rounded-2xl border-4 border-[#111827] object-cover shadow-lg shadow-[#3B82F6]/30"
+                  />
+                ) : (
+                  <div className="flex h-28 w-28 items-center justify-center rounded-2xl border-4 border-[#111827] bg-gradient-to-br from-[#3B82F6] to-[#1d4ed8] text-2xl font-bold text-white shadow-lg shadow-[#3B82F6]/30">
+                    {initials(user?.name)}
+                  </div>
+                )}
                 <div className="mb-1 pb-1">
                   <p className="text-xl font-bold text-white">{user?.name?.trim() || 'Campus user'}</p>
                   <p className="mt-1 flex items-center gap-2 text-sm text-[#94A3B8]">
@@ -60,10 +71,11 @@ export default function ProfilePage() {
               <div className="flex gap-2 sm:mb-2">
                 <button
                   type="button"
-                  className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white opacity-80 hover:bg-blue-500"
-                  disabled
-                  title="Coming soon"
+                  id="edit-profile-page-btn"
+                  onClick={() => setEditOpen(true)}
+                  className="flex items-center gap-2 rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-500 hover:shadow-blue-500/40"
                 >
+                  <HiOutlinePencilSquare className="h-4 w-4" />
                   Edit profile
                 </button>
               </div>
@@ -134,7 +146,7 @@ export default function ProfilePage() {
 
         <div className={`${tilePanel} mt-8`}>
           <p className="text-sm text-[#94A3B8]">
-            Need a name or role correction? Contact your campus administrator or use the campus IT helpdesk via{' '}
+            Need a role correction? Contact your campus administrator or use the campus IT helpdesk via{' '}
             <Link to="/contact" className="font-semibold text-[#3B82F6] hover:underline">
               Contact
             </Link>
@@ -142,6 +154,9 @@ export default function ProfilePage() {
           </p>
         </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal isOpen={editOpen} onClose={() => setEditOpen(false)} />
     </div>
   )
 }
