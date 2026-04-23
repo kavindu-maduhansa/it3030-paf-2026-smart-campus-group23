@@ -3,6 +3,7 @@ package com.smartcampus.config;
 import com.smartcampus.security.SessionAuthenticationFilter;
 import com.smartcampus.service.CustomOAuth2UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -23,6 +24,9 @@ public class SecurityConfig {
 
     private final CustomOAuth2UserService customOAuth2UserService;
     private final SessionAuthenticationFilter sessionAuthenticationFilter;
+
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -82,11 +86,11 @@ public class SecurityConfig {
                 .userInfoEndpoint(userInfo -> userInfo
                     .userService(customOAuth2UserService)
                 )
-                .defaultSuccessUrl("http://localhost:5175/dashboard", true)
-                .failureUrl("http://localhost:5175/login?error=true")
+                .defaultSuccessUrl(frontendUrl + "/dashboard", true)
+                .failureUrl(frontendUrl + "/login?error=true")
             )
             .logout(logout -> logout
-                .logoutSuccessUrl("http://localhost:5175")
+                .logoutSuccessUrl(frontendUrl)
                 .permitAll()
             )
             .exceptionHandling(exception -> exception

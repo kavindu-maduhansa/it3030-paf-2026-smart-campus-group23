@@ -39,6 +39,7 @@ public class Notification {
     private User admin;
 
     @Column(name = "is_read", nullable = false)
+    @Builder.Default
     private Boolean isRead = false;
 
     @Column(nullable = false, updatable = false)

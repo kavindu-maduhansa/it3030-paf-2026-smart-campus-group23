@@ -315,6 +315,10 @@ public class TicketService {
         return convertToResponseDTO(ticket);
     }
 
+    public org.springframework.core.io.Resource loadTicketImage(String fileName) {
+        return fileStorageService.loadFileAsResource(fileName);
+    }
+
     private void notifyAdminsAboutTicket(Ticket ticket) {
         try {
             List<User> admins = userRepository.findByRole(Role.ADMIN);

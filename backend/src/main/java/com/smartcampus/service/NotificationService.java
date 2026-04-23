@@ -3,7 +3,7 @@ package com.smartcampus.service;
 import com.smartcampus.dto.NotificationDTO;
 import com.smartcampus.dto.NotificationStatsDTO;
 import com.smartcampus.model.Notification;
-import com.smartcampus.model.User;
+import com.smartcampus.entity.User;
 import com.smartcampus.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
