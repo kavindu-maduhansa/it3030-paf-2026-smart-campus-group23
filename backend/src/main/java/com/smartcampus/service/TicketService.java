@@ -165,6 +165,10 @@ public class TicketService {
             throw new org.springframework.security.access.AccessDeniedException("Only admins or the ticket owner can close a ticket");
         }
 
+        if (status == TicketStatus.REJECTED && currentUser.getRole() != com.smartcampus.security.Role.ADMIN) {
+            throw new org.springframework.security.access.AccessDeniedException("Only admins can reject tickets");
+        }
+
         TicketStatus oldStatus = ticket.getStatus();
         ticket.setStatus(status);
 

@@ -3,11 +3,8 @@ import { Link } from 'react-router-dom'
 import {
   HiOutlineBolt,
   HiOutlineClipboardDocumentList,
-  HiOutlineCpuChip,
   HiOutlineMapPin,
   HiOutlineBellAlert,
-  HiOutlineChartBar,
-  HiOutlinePlus,
   HiOutlineUserCircle,
   HiOutlineEye,
   HiOutlinePencilSquare,
@@ -30,18 +27,7 @@ import {
 import { formatDistanceToNow } from 'date-fns'
 
 
-const equipmentHealth = [
-  { name: 'Central HVAC System', health: 88, status: 'Stable' },
-  { name: 'Core Network Switch', health: 94, status: 'Healthy' },
-  { name: 'AV Rack - Auditorium', health: 45, status: 'Maintenance' },
-  { name: 'Lab B-12 Power Unit', health: 76, status: 'Warning' },
-]
 
-const recentActivity = [
-  { user: 'Mike Tech', action: 'Resolved TK-1840 (Projector)', time: '45m ago' },
-  { user: 'Sarah Admin', action: 'Assigned TK-1844 to your queue', time: '2h ago' },
-  { user: 'System', action: 'HVAC Alert: High pressure in Bldg A', time: '3h ago' },
-]
 
 export default function TechnicianDashboardPage() {
   const { user } = useAuth()
@@ -162,7 +148,7 @@ export default function TechnicianDashboardPage() {
         </div>
 
         {/* Quick Action Cards */}
-        <div className="mt-8 grid gap-6 sm:grid-cols-3">
+        <div className="mt-8 grid gap-6 sm:grid-cols-2">
           <Link to="/maintenance" className={featureCard}>
              <span className={`${iconBase} bg-blue-500/10 text-blue-500`}>
                 <HiOutlineClipboardDocumentList className="h-7 w-7" />
@@ -182,17 +168,6 @@ export default function TechnicianDashboardPage() {
              <p className="mt-2 text-sm text-[#94A3B8]">Quickly access tickets assigned to your active queue.</p>
              <span className="mt-4 text-sm font-semibold text-emerald-500 opacity-0 transition-opacity group-hover:opacity-100">
                 My Queue →
-             </span>
-          </Link>
-
-          <Link to="/maintenance/report" className={featureCard}>
-             <span className={`${iconBase} bg-orange-500/10 text-orange-500`}>
-                <HiOutlinePlus className="h-7 w-7" />
-             </span>
-             <h3 className="text-lg font-bold text-white">New Ticket</h3>
-             <p className="mt-2 text-sm text-[#94A3B8]">Submit a new maintenance request or report an incident.</p>
-             <span className="mt-4 text-sm font-semibold text-orange-500 opacity-0 transition-opacity group-hover:opacity-100">
-                Add Ticket →
              </span>
           </Link>
         </div>
@@ -248,7 +223,8 @@ export default function TechnicianDashboardPage() {
                               <span className={`text-[10px] font-bold uppercase tracking-wider ${
                                 t.status === 'OPEN' ? 'text-orange-400' :
                                 t.status === 'IN_PROGRESS' ? 'text-blue-400' :
-                                'text-emerald-400'
+                                t.status === 'RESOLVED' ? 'text-emerald-400' :
+                                t.status === 'REJECTED' ? 'text-red-400' : 'text-slate-400'
                               }`}>
                                 {t.status.replace('_', ' ')}
                               </span>
@@ -282,13 +258,15 @@ export default function TechnicianDashboardPage() {
                           >
                             <HiOutlineEye className="h-5 w-5" />
                           </button>
-                          <button 
-                            onClick={() => handleOpenEdit(t)}
-                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1F2937] bg-[#111827] text-[#64748B] transition-all hover:border-amber-500/50 hover:text-amber-500 hover:shadow-lg hover:shadow-amber-500/10"
-                            title="Update"
-                          >
-                            <HiOutlinePencilSquare className="h-5 w-5" />
-                          </button>
+                          {t.status !== 'REJECTED' && (
+                            <button 
+                              onClick={() => handleOpenEdit(t)}
+                              className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1F2937] bg-[#111827] text-[#64748B] transition-all hover:border-amber-500/50 hover:text-amber-500 hover:shadow-lg hover:shadow-amber-500/10"
+                              title="Update"
+                            >
+                              <HiOutlinePencilSquare className="h-5 w-5" />
+                            </button>
+                          )}
                           {!t.assignedToId && (
                             <button 
                               onClick={() => handleSelfAssign(t.id)}
@@ -298,13 +276,6 @@ export default function TechnicianDashboardPage() {
                               <HiOutlineUserPlus className="h-5 w-5" />
                             </button>
                           )}
-                          <button 
-                            onClick={() => { setSelectedTicket(t); setActiveModal('delete'); }}
-                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1F2937] bg-[#111827] text-[#64748B] transition-all hover:border-rose-500/50 hover:text-rose-500 hover:shadow-lg hover:shadow-rose-500/10"
-                            title="Remove"
-                          >
-                            <HiOutlineTrash className="h-5 w-5" />
-                          </button>
                         </div>
                       </div>
                     </li>
@@ -313,41 +284,6 @@ export default function TechnicianDashboardPage() {
              </div>
           </div>
 
-          {/* Infrastructure Health */}
-          <div className={panelLg}>
-            <SectionHeader 
-              title="Infrastructure Health" 
-              subtitle="Real-time monitoring of critical campus assets and utility systems."
-            />
-            <div className="grid gap-4 sm:grid-cols-2">
-              {equipmentHealth.map((item) => (
-                <div key={item.name} className={`${tilePanel} flex items-center gap-4`}>
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
-                    item.health > 90 ? 'bg-emerald-500/10 text-emerald-500' : 
-                    item.health > 70 ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'
-                  }`}>
-                    <HiOutlineCpuChip className="h-6 w-6" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-white">{item.name}</p>
-                      <span className="text-xs font-mono text-[#64748B]">{item.health}%</span>
-                    </div>
-                    <div className="mt-2 h-1.5 w-full rounded-full bg-[#1F2937]">
-                      <div 
-                        className={`h-full rounded-full ${
-                          item.health > 90 ? 'bg-emerald-500' : 
-                          item.health > 70 ? 'bg-amber-500' : 'bg-red-500'
-                        }`} 
-                        style={{ width: `${item.health}%` }}
-                      />
-                    </div>
-                    <p className="mt-1 text-[10px] text-[#64748B] uppercase tracking-wider font-bold">{item.status}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Right Column */}
@@ -365,32 +301,7 @@ export default function TechnicianDashboardPage() {
             </div>
           </div>
 
-          <div className={panelLg}>
-             <h3 className="flex items-center gap-2 text-sm font-bold text-white mb-4">
-                <HiOutlineChartBar className="h-5 w-5 text-[#3B82F6]" />
-                Recent Operations
-             </h3>
-             <ul className="space-y-4">
-                {recentActivity.map((act, i) => (
-                  <li key={i} className="flex gap-3">
-                    <div className="h-8 w-8 shrink-0 rounded-full bg-[#1F2937] flex items-center justify-center text-[10px] font-bold text-[#3B82F6]">
-                      {act.user.split(' ')[0][0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[#CBD5E1] truncate font-semibold">{act.user}</p>
-                      <p className="text-[10px] text-[#64748B]">{act.action} · {act.time}</p>
-                    </div>
-                  </li>
-                ))}
-             </ul>
-          </div>
 
-          <div className={`${tilePanel} border-blue-500/20 bg-[#0F172A]`}>
-             <h3 className="text-xs font-bold text-[#3B82F6] uppercase tracking-wider">Handover Note</h3>
-             <p className="mt-2 text-sm text-[#94A3B8] italic">
-               "Bldg C main riser is being inspected at 18:00."
-             </p>
-          </div>
         </div>
       </div>
 
@@ -432,7 +343,9 @@ export default function TechnicianDashboardPage() {
                     </div>
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Status</p>
-                      <p className="mt-1 text-sm font-black uppercase tracking-wider text-[#3B82F6]">{selectedTicket.status.replace('_', ' ')}</p>
+                      <p className={`mt-1 text-sm font-black uppercase tracking-wider ${
+                        selectedTicket.status === 'REJECTED' ? 'text-rose-500' : 'text-[#3B82F6]'
+                      }`}>{selectedTicket.status.replace('_', ' ')}</p>
                     </div>
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Logged</p>

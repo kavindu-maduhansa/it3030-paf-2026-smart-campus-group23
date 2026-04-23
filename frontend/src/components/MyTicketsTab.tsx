@@ -131,7 +131,8 @@ export default function MyTicketsTab() {
                 <p className={`text-[10px] font-bold uppercase tracking-wider ${
                   t.status === 'OPEN' ? 'text-blue-400' : 
                   t.status === 'IN_PROGRESS' ? 'text-amber-400' :
-                  t.status === 'RESOLVED' ? 'text-emerald-400' : 'text-slate-400'
+                  t.status === 'RESOLVED' ? 'text-emerald-400' :
+                  t.status === 'REJECTED' ? 'text-red-400' : 'text-slate-400'
                 }`}>
                   {t.status.replace('_', ' ')}
                 </p>
@@ -166,7 +167,7 @@ export default function MyTicketsTab() {
                 <HiOutlineEye className="h-5 w-5" />
               </button>
               
-              {t.status !== 'CLOSED' && (
+              {t.status !== 'CLOSED' && t.status !== 'REJECTED' && (
                 <>
                   {!t.assignedToId && (
                     <button 
@@ -219,7 +220,12 @@ export default function MyTicketsTab() {
                   <div className="grid gap-6 sm:grid-cols-2">
                     <div className={tilePanel}>
                       <span className="text-xs font-semibold uppercase text-[#64748B]">Status</span>
-                      <p className="mt-1 font-semibold text-blue-400">{selectedTicket.status}</p>
+                      <p className={`mt-1 font-semibold ${
+                        selectedTicket.status === 'OPEN' ? 'text-blue-400' :
+                        selectedTicket.status === 'IN_PROGRESS' ? 'text-amber-400' :
+                        selectedTicket.status === 'RESOLVED' ? 'text-emerald-400' :
+                        selectedTicket.status === 'REJECTED' ? 'text-red-400' : 'text-slate-400'
+                      }`}>{selectedTicket.status}</p>
                     </div>
                     <div className={tilePanel}>
                       <span className="text-xs font-semibold uppercase text-[#64748B]">Category</span>
@@ -387,7 +393,7 @@ export default function MyTicketsTab() {
                   {isUpdating ? 'Saving...' : 'Save Changes'}
                 </button>
               )}
-              {activeModal === 'view' && selectedTicket.status !== 'CLOSED' && (
+              {activeModal === 'view' && selectedTicket.status !== 'CLOSED' && selectedTicket.status !== 'REJECTED' && (
                 <button
                   disabled={isUpdating}
                   onClick={() => {

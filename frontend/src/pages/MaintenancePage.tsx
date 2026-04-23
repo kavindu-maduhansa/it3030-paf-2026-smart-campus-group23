@@ -1,8 +1,8 @@
 import { useState, useEffect, useContext } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { 
-  HiOutlineEye, 
-  HiOutlinePencilSquare, 
+import {
+  HiOutlineEye,
+  HiOutlinePencilSquare,
   HiOutlineTrash,
   HiOutlineXMark,
   HiOutlineCheckCircle,
@@ -20,19 +20,19 @@ import { apiClient } from '../services/axiosConfig'
 import type { User } from '../services/authService'
 
 const CATEGORIES = [
-  'Electrical', 'Plumbing', 'IT & Network', 'AV & Projector', 
+  'Electrical', 'Plumbing', 'IT & Network', 'AV & Projector',
   'HVAC / Air Con', 'Furniture', 'Janitorial', 'Other'
 ]
 import { Pill, SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
-import { 
-  getAllTickets, 
+import {
+  getAllTickets,
   updateTicketStatus,
   updateTicket,
   deleteTicket,
   selfAssign,
   assignTechnician,
   unassignTechnician,
-  type TicketResponseDTO 
+  type TicketResponseDTO
 } from '../services/ticketService'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -41,23 +41,28 @@ import { formatDistanceToNow } from 'date-fns'
 export default function MaintenancePage() {
   const authContext = useContext(AuthContext)
   const user = authContext?.user
-  
+
   const [searchParams] = useSearchParams()
   const [tickets, setTickets] = useState<TicketResponseDTO[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL')
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
-  
-  const [activeModal, setActiveModal] = useState<'view' | 'edit' | 'delete' | 'assign' | null>(null)
+
+  const [activeModal, setActiveModal] = useState<'view' | 'edit' | 'delete' | 'assign' | 'alert' | null>(null)
   const [selectedTicket, setSelectedTicket] = useState<TicketResponseDTO | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [technicians, setTechnicians] = useState<User[]>([])
-  
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; type?: 'error' | 'warning' | 'info' }>({
+    title: '',
+    message: '',
+    type: 'info'
+  })
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
-  
+
   // For Edit Form
   const [editForm, setEditForm] = useState<Partial<TicketResponseDTO>>({})
 
@@ -89,18 +94,18 @@ export default function MaintenancePage() {
   const list = tickets.filter((t) => {
     const search = searchTerm.toLowerCase().trim()
     const idSearch = search.startsWith('tk-') ? search.replace('tk-', '') : search
-    
-    const matchesSearch = search === '' || 
-      t.title.toLowerCase().includes(search) || 
+
+    const matchesSearch = search === '' ||
+      t.title.toLowerCase().includes(search) ||
       t.description.toLowerCase().includes(search) ||
       t.id.toString().includes(idSearch) ||
       (t.userName && t.userName.toLowerCase().includes(search)) ||
       (t.assignedToName && t.assignedToName.toLowerCase().includes(search))
-    
+
     const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter
     const matchesPriority = priorityFilter === 'ALL' || t.priority === priorityFilter
     const matchesCategory = categoryFilter === 'ALL' || t.category === categoryFilter
-    
+
     let matchesQueue = true
 
     return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesQueue
@@ -111,8 +116,31 @@ export default function MaintenancePage() {
   const startIndex = (currentPage - 1) * itemsPerPage
   const paginatedList = list.slice(startIndex, startIndex + itemsPerPage)
 
+  const showAlert = (title: string, message: string, type: 'error' | 'warning' | 'info' = 'info') => {
+    setAlertConfig({ title, message, type })
+    setActiveModal('alert')
+  }
+
   const handleOpenModal = async (type: 'view' | 'edit' | 'delete' | 'assign', ticket: TicketResponseDTO) => {
     setSelectedTicket(ticket)
+    if (type === 'edit' && user?.role === 'TECHNICIAN' && !ticket.assignedToId) {
+      showAlert(
+        "Action Restricted",
+        "This ticket is currently unassigned. Technicians can only edit tickets that are assigned to them. Please self-assign the ticket first.",
+        "warning"
+      )
+      return
+    }
+
+    if (type === 'delete' && user?.role === 'TECHNICIAN') {
+      showAlert(
+        "Action Restricted",
+        "Technicians do not have permission to delete tickets. Please contact an administrator if a ticket needs to be removed.",
+        "error"
+      )
+      return
+    }
+
     if (type === 'edit') setEditForm(ticket)
     if (type === 'assign') {
       try {
@@ -137,7 +165,7 @@ export default function MaintenancePage() {
       if (editForm.status !== selectedTicket.status) {
         await updateTicketStatus(selectedTicket.id, editForm.status)
       }
-      
+
       // Then update other fields (title, description, category, priority are required by DTO)
       await updateTicket(selectedTicket.id, {
         title: editForm.title || selectedTicket.title,
@@ -147,12 +175,12 @@ export default function MaintenancePage() {
         contactDetails: editForm.contactDetails,
         resourceId: editForm.resourceId
       })
-      
+
       await fetchTickets()
       handleCloseModal()
     } catch (err) {
       console.error('Failed to update ticket', err)
-      alert('Error updating ticket. Check console for details.')
+      showAlert("Update Failed", "There was an error updating the ticket. Please check the console for details.", "error")
     }
   }
 
@@ -164,7 +192,7 @@ export default function MaintenancePage() {
       handleCloseModal()
     } catch (err) {
       console.error('Failed to delete ticket', err)
-      alert('Error deleting ticket. Check console for details.')
+      showAlert("Deletion Failed", "There was an error deleting the ticket.", "error")
     }
   }
 
@@ -174,7 +202,7 @@ export default function MaintenancePage() {
       await fetchTickets()
     } catch (err) {
       console.error('Failed to self-assign ticket', err)
-      alert('Error assigning ticket. Check console for details.')
+      showAlert("Assignment Failed", "Could not self-assign the ticket.", "error")
     }
   }
 
@@ -186,7 +214,7 @@ export default function MaintenancePage() {
       handleCloseModal()
     } catch (err) {
       console.error('Failed to assign technician', err)
-      alert('Error assigning technician. Check console for details.')
+      showAlert("Assignment Failed", "Could not assign the technician.", "error")
     }
   }
 
@@ -198,7 +226,7 @@ export default function MaintenancePage() {
       handleCloseModal()
     } catch (err) {
       console.error('Failed to unassign ticket', err)
-      alert('Error unassigning ticket. Check console for details.')
+      showAlert("Unassignment Failed", "Could not unassign the technician.", "error")
     }
   }
 
@@ -209,7 +237,7 @@ export default function MaintenancePage() {
         <SectionHeader
           eyebrow="Operations"
           title="Maintenance & tickets"
-          subtitle="Prioritised work across campus. Hook this view to your tickets API and WebSocket stream."
+          subtitle="Browse and manage all the maintenance tickets."
           action={
             <div className="flex flex-wrap items-center gap-3">
               <Link
@@ -237,80 +265,81 @@ export default function MaintenancePage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-                {/* Status Filter */}
-                <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
-                  <span className="text-[10px] font-bold uppercase text-[#475569]">Status</span>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
-                  >
-                    <option value="ALL" className="bg-[#0F172A] text-white">All</option>
-                    <option value="OPEN" className="bg-[#0F172A] text-white">Open</option>
-                    <option value="IN_PROGRESS" className="bg-[#0F172A] text-white">In Progress</option>
-                    <option value="RESOLVED" className="bg-[#0F172A] text-white">Resolved</option>
-                    <option value="CLOSED" className="bg-[#0F172A] text-white">Closed</option>
-                  </select>
-                </div>
-
-                {/* Priority Filter */}
-                <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
-                  <span className="text-[10px] font-bold uppercase text-[#475569]">Priority</span>
-                  <select
-                    value={priorityFilter}
-                    onChange={(e) => setPriorityFilter(e.target.value)}
-                    className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
-                  >
-                    <option value="ALL" className="bg-[#0F172A] text-white">All</option>
-                    <option value="LOW" className="bg-[#0F172A] text-white">Low</option>
-                    <option value="MEDIUM" className="bg-[#0F172A] text-white">Medium</option>
-                    <option value="HIGH" className="bg-[#0F172A] text-white">High</option>
-                    <option value="URGENT" className="bg-[#0F172A] text-white">Urgent</option>
-                  </select>
-                </div>
-
-                {/* Category Filter */}
-                <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
-                  <span className="text-[10px] font-bold uppercase text-[#475569]">Category</span>
-                  <select
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
-                  >
-                    <option value="ALL" className="bg-[#0F172A] text-white">All</option>
-                    {CATEGORIES.map(cat => (
-                      <option key={cat} value={cat} className="bg-[#0F172A] text-white">
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {/* Status Filter */}
+              <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
+                <span className="text-[10px] font-bold uppercase text-[#475569]">Status</span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL" className="bg-[#0F172A] text-white">All</option>
+                  <option value="OPEN" className="bg-[#0F172A] text-white">Open</option>
+                  <option value="IN_PROGRESS" className="bg-[#0F172A] text-white">In Progress</option>
+                  <option value="RESOLVED" className="bg-[#0F172A] text-white">Resolved</option>
+                  <option value="CLOSED" className="bg-[#0F172A] text-white">Closed</option>
+                  <option value="REJECTED" className="bg-[#0F172A] text-white">Rejected</option>
+                </select>
               </div>
+
+              {/* Priority Filter */}
+              <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
+                <span className="text-[10px] font-bold uppercase text-[#475569]">Priority</span>
+                <select
+                  value={priorityFilter}
+                  onChange={(e) => setPriorityFilter(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL" className="bg-[#0F172A] text-white">All</option>
+                  <option value="LOW" className="bg-[#0F172A] text-white">Low</option>
+                  <option value="MEDIUM" className="bg-[#0F172A] text-white">Medium</option>
+                  <option value="HIGH" className="bg-[#0F172A] text-white">High</option>
+                  <option value="URGENT" className="bg-[#0F172A] text-white">Urgent</option>
+                </select>
+              </div>
+
+              {/* Category Filter */}
+              <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
+                <span className="text-[10px] font-bold uppercase text-[#475569]">Category</span>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL" className="bg-[#0F172A] text-white">All</option>
+                  {CATEGORIES.map(cat => (
+                    <option key={cat} value={cat} className="bg-[#0F172A] text-white">
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-4">
-            <div className={tilePanel}>
-              <p className="text-xs font-semibold uppercase text-[#94A3B8]">Total Tickets</p>
-              <p className="mt-2 text-2xl font-bold text-white">{tickets.length}</p>
-            </div>
-            <div className={tilePanel}>
-              <p className="text-xs font-semibold uppercase text-[#94A3B8]">Open</p>
-              <p className="mt-2 text-2xl font-bold text-orange-400">
-                {tickets.filter(t => t.status === 'OPEN').length}
-              </p>
-            </div>
-            <div className={tilePanel}>
-              <p className="text-xs font-semibold uppercase text-[#94A3B8]">In Progress</p>
-              <p className="mt-2 text-2xl font-bold text-blue-400">
-                {tickets.filter(t => t.status === 'IN_PROGRESS').length}
-              </p>
-            </div>
-            <div className={tilePanel}>
-              <p className="text-xs font-semibold uppercase text-[#94A3B8]">Resolved</p>
-              <p className="mt-2 text-2xl font-bold text-emerald-400">
-                {tickets.filter(t => t.status === 'RESOLVED').length}
-              </p>
+          <div className={tilePanel}>
+            <p className="text-xs font-semibold uppercase text-[#94A3B8]">Total Tickets</p>
+            <p className="mt-2 text-2xl font-bold text-white">{tickets.length}</p>
+          </div>
+          <div className={tilePanel}>
+            <p className="text-xs font-semibold uppercase text-[#94A3B8]">Open</p>
+            <p className="mt-2 text-2xl font-bold text-orange-400">
+              {tickets.filter(t => t.status === 'OPEN').length}
+            </p>
+          </div>
+          <div className={tilePanel}>
+            <p className="text-xs font-semibold uppercase text-[#94A3B8]">In Progress</p>
+            <p className="mt-2 text-2xl font-bold text-blue-400">
+              {tickets.filter(t => t.status === 'IN_PROGRESS').length}
+            </p>
+          </div>
+          <div className={tilePanel}>
+            <p className="text-xs font-semibold uppercase text-[#94A3B8]">Resolved</p>
+            <p className="mt-2 text-2xl font-bold text-emerald-400">
+              {tickets.filter(t => t.status === 'RESOLVED').length}
+            </p>
           </div>
         </div>
 
@@ -329,89 +358,93 @@ export default function MaintenancePage() {
                   : priority === 'medium'
                     ? 'border-l-amber-500'
                     : 'border-l-slate-600'
-              
+
               const updatedText = formatDistanceToNow(new Date(t.updatedAt), { addSuffix: true })
               const assigneeText = t.assignedToName || 'Unassigned'
 
               return (
-              <li key={t.id} className={`${panelLg} border-l-4 ${borderAccent} group transition-all hover:bg-[#1E293B]/80 hover:ring-1 hover:ring-blue-500/20`}>
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <p className="font-mono text-xs text-[#64748B]">TK-{t.id}</p>
-                      <p className={`text-[10px] font-bold uppercase tracking-wider ${
-                        t.status === 'OPEN' ? 'text-blue-400' : 
-                        t.status === 'IN_PROGRESS' ? 'text-amber-400' :
-                        t.status === 'RESOLVED' ? 'text-emerald-400' : 'text-slate-400'
-                      }`}>
-                        {t.status.replace('_', ' ')}
-                      </p>
+                <li key={t.id} className={`${panelLg} border-l-4 ${borderAccent} group transition-all hover:bg-[#1E293B]/80 hover:ring-1 hover:ring-blue-500/20`}>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <p className="font-mono text-xs text-[#64748B]">TK-{t.id}</p>
+                        <p className={`text-[10px] font-bold uppercase tracking-wider ${t.status === 'OPEN' ? 'text-blue-400' :
+                            t.status === 'IN_PROGRESS' ? 'text-amber-400' :
+                              t.status === 'RESOLVED' ? 'text-emerald-400' : 
+                                t.status === 'REJECTED' ? 'text-red-400' : 'text-slate-400'
+                          }`}>
+                          {t.status.replace('_', ' ')}
+                        </p>
+                      </div>
+                      <h3 className="mt-1 text-lg font-semibold text-white">{t.title}</h3>
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#94A3B8]">
+                        <span className="flex items-center gap-1.5">
+                          <HiOutlineMapPin className="h-4 w-4 text-[#64748B]" />
+                          {t.location || 'Campus'}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <HiOutlineClock className="h-4 w-4 text-[#64748B]" />
+                          Updated {updatedText}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <HiOutlineUser className="h-4 w-4 text-[#64748B]" />
+                          {t.userName || 'Anonymous'}
+                        </span>
+                        <span className="flex items-center gap-1.5 border-l border-[#1F2937] pl-4">
+                          <span className="text-[#64748B]">Assigned:</span>
+                          {assigneeText}
+                        </span>
+                      </div>
                     </div>
-                    <h3 className="mt-1 text-lg font-semibold text-white">{t.title}</h3>
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#94A3B8]">
-                      <span className="flex items-center gap-1.5">
-                        <HiOutlineMapPin className="h-4 w-4 text-[#64748B]" />
-                        {t.location || 'Campus'}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <HiOutlineClock className="h-4 w-4 text-[#64748B]" />
-                        Updated {updatedText}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <HiOutlineUser className="h-4 w-4 text-[#64748B]" />
-                        {t.userName || 'Anonymous'}
-                      </span>
-                      <span className="flex items-center gap-1.5 border-l border-[#1F2937] pl-4">
-                        <span className="text-[#64748B]">Assigned:</span>
-                        {assigneeText}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 self-end sm:self-start">
-                    <Pill
-                      variant={
-                        priority === 'urgent' || priority === 'high' ? 'danger' : priority === 'medium' ? 'warning' : 'default'
-                      }
-                    >
-                      {priority.toUpperCase()}
-                    </Pill>
-                    
-                    <div className="ml-2 flex items-center gap-1">
-                      {((!t.assignedToId && user?.role === 'TECHNICIAN') || user?.role === 'ADMIN') && (
-                        <button 
-                          onClick={() => user?.role === 'ADMIN' ? handleOpenModal('assign', t) : handleSelfAssign(t.id)}
-                          className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#334155] hover:text-emerald-400 transition-all"
-                          title={user?.role === 'ADMIN' ? "Assign Technician" : "Self-Assign"}
+
+                    <div className="flex items-center gap-2 self-end sm:self-start">
+                      <Pill
+                        variant={
+                          priority === 'urgent' || priority === 'high' ? 'danger' : priority === 'medium' ? 'warning' : 'default'
+                        }
+                      >
+                        {priority.toUpperCase()}
+                      </Pill>
+
+                      <div className="ml-2 flex items-center gap-1">
+                        {((!t.assignedToId && user?.role === 'TECHNICIAN' && t.status !== 'REJECTED') || user?.role === 'ADMIN') && (
+                          <button
+                            onClick={() => user?.role === 'ADMIN' ? handleOpenModal('assign', t) : handleSelfAssign(t.id)}
+                            className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#334155] hover:text-emerald-400 transition-all"
+                            title={user?.role === 'ADMIN' ? "Assign Technician" : "Self-Assign"}
+                          >
+                            <HiOutlineUserPlus className="h-5 w-5" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleOpenModal('view', t)}
+                          className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#334155] hover:text-[#3B82F6] transition-all"
+                          title="View Details"
                         >
-                          <HiOutlineUserPlus className="h-5 w-5" />
+                          <HiOutlineEye className="h-5 w-5" />
                         </button>
-                      )}
-                      <button 
-                        onClick={() => handleOpenModal('view', t)}
-                        className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#334155] hover:text-[#3B82F6] transition-all"
-                        title="View Details"
-                      >
-                        <HiOutlineEye className="h-5 w-5" />
-                      </button>
-                      <button 
-                        onClick={() => handleOpenModal('edit', t)}
-                        className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#334155] hover:text-amber-400 transition-all"
-                        title="Edit Ticket"
-                      >
-                        <HiOutlinePencilSquare className="h-5 w-5" />
-                      </button>
-                      <button 
-                        onClick={() => handleOpenModal('delete', t)}
-                        className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#334155] hover:text-red-400 transition-all"
-                        title="Delete Ticket"
-                      >
-                        <HiOutlineTrash className="h-5 w-5" />
-                      </button>
+                        {(user?.role === 'ADMIN' || (user?.role === 'TECHNICIAN' && t.status !== 'REJECTED')) && (
+                          <button
+                            onClick={() => handleOpenModal('edit', t)}
+                            className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#334155] hover:text-amber-400 transition-all"
+                            title="Edit Ticket"
+                          >
+                            <HiOutlinePencilSquare className="h-5 w-5" />
+                          </button>
+                        )}
+                        {user?.role === 'ADMIN' && (
+                          <button
+                            onClick={() => handleOpenModal('delete', t)}
+                            className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#334155] hover:text-red-400 transition-all"
+                            title="Delete Ticket"
+                          >
+                            <HiOutlineTrash className="h-5 w-5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </li>
+                </li>
               )
             })
           )}
@@ -427,7 +460,7 @@ export default function MaintenancePage() {
               </span>{' '}
               of <span className="font-medium text-white">{list.length}</span> tickets
             </p>
-            
+
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
@@ -436,7 +469,7 @@ export default function MaintenancePage() {
               >
                 <HiOutlineChevronLeft className="h-5 w-5" />
               </button>
-              
+
               <div className="flex items-center gap-1">
                 {[...Array(totalPages)].map((_, i) => {
                   const page = i + 1
@@ -455,11 +488,10 @@ export default function MaintenancePage() {
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`h-10 w-10 rounded-xl text-sm font-bold transition-all ${
-                        currentPage === page
+                      className={`h-10 w-10 rounded-xl text-sm font-bold transition-all ${currentPage === page
                           ? 'bg-[#3B82F6] text-white shadow-lg shadow-blue-500/20'
                           : 'border border-[#1F2937] bg-[#111827] text-[#64748B] hover:border-[#334155] hover:text-white'
-                      }`}
+                        }`}
                     >
                       {page}
                     </button>
@@ -486,19 +518,19 @@ export default function MaintenancePage() {
       </div>
 
       {/* MODALS */}
-      {activeModal && selectedTicket && (
+      {activeModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
           {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
             onClick={handleCloseModal}
           />
-          
+
           {/* Content */}
           <div className="relative w-full max-w-2xl transform overflow-hidden rounded-3xl border border-[#334155] bg-[#0F172A] p-0 shadow-2xl transition-all">
-            
+
             {/* VIEW MODAL */}
-            {activeModal === 'view' && (
+            {activeModal === 'view' && selectedTicket && (
               <div className="flex flex-col">
                 <div className="flex items-center justify-between border-b border-[#1F2937] p-6">
                   <div>
@@ -509,23 +541,27 @@ export default function MaintenancePage() {
                     <HiOutlineXMark className="h-6 w-6" />
                   </button>
                 </div>
-                
+
                 <div className="max-h-[80vh] overflow-y-auto custom-scrollbar p-6 space-y-8">
                   <div className="space-y-6">
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className={tilePanel}>
                         <span className="text-xs font-semibold uppercase text-[#64748B]">Status</span>
-                        <p className="mt-1 font-semibold text-blue-400">{selectedTicket.status}</p>
+                        <p className={`mt-1 font-semibold ${
+                          selectedTicket.status === 'OPEN' ? 'text-blue-400' :
+                          selectedTicket.status === 'IN_PROGRESS' ? 'text-amber-400' :
+                          selectedTicket.status === 'RESOLVED' ? 'text-emerald-400' :
+                          selectedTicket.status === 'REJECTED' ? 'text-red-400' : 'text-slate-400'
+                        }`}>{selectedTicket.status}</p>
                       </div>
                       <div className={tilePanel}>
                         <span className="text-xs font-semibold uppercase text-[#64748B]">Priority</span>
-                        <p className={`mt-1 font-semibold ${
-                          selectedTicket.priority.toLowerCase() === 'high' ? 'text-red-400' : 
-                          selectedTicket.priority.toLowerCase() === 'medium' ? 'text-amber-400' : 'text-emerald-400'
-                        }`}>{selectedTicket.priority.toUpperCase()}</p>
+                        <p className={`mt-1 font-semibold ${selectedTicket.priority.toLowerCase() === 'high' ? 'text-red-400' :
+                            selectedTicket.priority.toLowerCase() === 'medium' ? 'text-amber-400' : 'text-emerald-400'
+                          }`}>{selectedTicket.priority.toUpperCase()}</p>
                       </div>
                     </div>
-                    
+
                     <div>
                       <h4 className="text-sm font-semibold uppercase text-[#64748B]">Description</h4>
                       <p className="mt-2 text-white leading-relaxed">{selectedTicket.description}</p>
@@ -537,10 +573,10 @@ export default function MaintenancePage() {
                         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                           {selectedTicket.imageUrls.map((url, i) => (
                             <div key={i} className="aspect-square overflow-hidden rounded-xl border border-[#1F2937] bg-[#0F172A]">
-                              <img 
-                                src={url} 
-                                alt={`Attachment ${i + 1}`} 
-                                className="h-full w-full object-cover transition-transform hover:scale-110 cursor-pointer" 
+                              <img
+                                src={url}
+                                alt={`Attachment ${i + 1}`}
+                                className="h-full w-full object-cover transition-transform hover:scale-110 cursor-pointer"
                                 onClick={() => window.open(url, '_blank')}
                               />
                             </div>
@@ -548,7 +584,7 @@ export default function MaintenancePage() {
                         </div>
                       </div>
                     )}
-                    
+
                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 text-sm pb-6 border-b border-[#1F2937]/50">
                       <div>
                         <h4 className="font-bold uppercase tracking-wider text-[10px] text-[#64748B]">Category</h4>
@@ -569,10 +605,10 @@ export default function MaintenancePage() {
                     </div>
                   </div>
 
-                  </div>
-                
+                </div>
+
                 <div className="bg-[#111827] p-6 flex justify-end">
-                  <button 
+                  <button
                     onClick={handleCloseModal}
                     className="rounded-xl bg-[#3B82F6] px-6 py-2.5 text-sm font-bold text-white hover:bg-blue-500 transition-all"
                   >
@@ -583,7 +619,7 @@ export default function MaintenancePage() {
             )}
 
             {/* EDIT MODAL */}
-            {activeModal === 'edit' && (
+            {activeModal === 'edit' && selectedTicket && (
               <div className="flex flex-col">
                 <div className="flex items-center justify-between border-b border-[#1F2937] p-6">
                   <h2 className="text-2xl font-bold text-white">Modify Ticket</h2>
@@ -591,12 +627,12 @@ export default function MaintenancePage() {
                     <HiOutlineXMark className="h-6 w-6" />
                   </button>
                 </div>
-                
+
                 <div className="p-6 space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Priority</label>
-                      <select 
+                      <select
                         value={editForm.priority}
                         onChange={(e) => setEditForm(prev => ({ ...prev, priority: e.target.value as any }))}
                         className="w-full rounded-xl border border-[#334155] bg-[#0F172A] px-4 py-2.5 text-white focus:border-[#3B82F6] outline-none"
@@ -609,7 +645,7 @@ export default function MaintenancePage() {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Status</label>
-                      <select 
+                      <select
                         value={editForm.status}
                         onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value as any }))}
                         className="w-full rounded-xl border border-[#334155] bg-[#0F172A] px-4 py-2.5 text-white focus:border-[#3B82F6] outline-none"
@@ -618,38 +654,39 @@ export default function MaintenancePage() {
                         <option value="IN_PROGRESS">In Progress</option>
                         <option value="RESOLVED">Resolved</option>
                         <option value="CLOSED">Closed</option>
+                        {user?.role === 'ADMIN' && <option value="REJECTED">Rejected</option>}
                       </select>
                     </div>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Assignee</label>
-                    <input 
+                    <input
                       type="text"
                       disabled
                       value={editForm.assignedToName || 'Unassigned'}
                       className="w-full rounded-xl border border-[#334155] bg-[#0F172A]/50 px-4 py-2.5 text-[#94A3B8] outline-none cursor-not-allowed"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-semibold text-[#64748B] mb-1.5">Internal Notes</label>
-                    <textarea 
+                    <textarea
                       rows={3}
                       placeholder="Add resolution notes or technical updates..."
                       className="w-full rounded-xl border border-[#334155] bg-[#0F172A] p-4 text-white focus:border-[#3B82F6] outline-none resize-none"
                     />
                   </div>
                 </div>
-                
+
                 <div className="bg-[#111827] p-6 flex justify-end gap-3">
-                  <button 
+                  <button
                     onClick={handleCloseModal}
                     className="rounded-xl border border-[#334155] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#1F2937] transition-all"
                   >
                     Cancel
                   </button>
-                  <button 
+                  <button
                     onClick={handleUpdateTicket}
                     className="rounded-xl bg-[#3B82F6] px-6 py-2.5 text-sm font-bold text-white hover:bg-blue-500 transition-all flex items-center gap-2"
                   >
@@ -661,7 +698,7 @@ export default function MaintenancePage() {
             )}
 
             {/* DELETE MODAL */}
-            {activeModal === 'delete' && (
+            {activeModal === 'delete' && selectedTicket && (
               <div className="flex flex-col">
                 <div className="p-8 text-center sm:text-left">
                   <div className="mx-auto sm:mx-0 flex h-14 w-14 items-center justify-center rounded-full bg-red-500/20 text-red-500 mb-6">
@@ -669,19 +706,19 @@ export default function MaintenancePage() {
                   </div>
                   <h2 className="text-2xl font-bold text-white">Delete Ticket?</h2>
                   <p className="mt-3 text-[#94A3B8] leading-relaxed">
-                    Are you sure you want to delete <span className="font-bold text-white">TK-{selectedTicket.id}</span>? 
+                    Are you sure you want to delete <span className="font-bold text-white">TK-{selectedTicket.id}</span>?
                     This action will permanently remove it from the operations board. This cannot be undone.
                   </p>
                 </div>
-                
+
                 <div className="bg-[#111827] p-6 flex flex-col sm:flex-row justify-end gap-3">
-                  <button 
+                  <button
                     onClick={handleCloseModal}
                     className="rounded-xl border border-[#334155] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#1F2937] transition-all order-2 sm:order-1"
                   >
                     Keep Ticket
                   </button>
-                  <button 
+                  <button
                     onClick={handleDeleteTicket}
                     className="rounded-xl bg-red-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-red-500 transition-all flex items-center justify-center gap-2 order-1 sm:order-2"
                   >
@@ -693,7 +730,7 @@ export default function MaintenancePage() {
             )}
 
             {/* ASSIGN MODAL */}
-            {activeModal === 'assign' && (
+            {activeModal === 'assign' && selectedTicket && (
               <div className="flex flex-col">
                 <div className="flex items-center justify-between border-b border-[#1F2937] p-6">
                   <div>
@@ -752,11 +789,49 @@ export default function MaintenancePage() {
                 </div>
 
                 <div className="bg-[#111827] p-6 flex justify-end">
-                  <button 
+                  <button
                     onClick={handleCloseModal}
                     className="rounded-xl border border-[#334155] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#1F2937] transition-all"
                   >
                     Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ALERT MODAL */}
+            {activeModal === 'alert' && (
+              <div className="flex flex-col">
+                <div className="p-8 text-center">
+                  <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full mb-6 ${
+                    alertConfig.type === 'error' ? 'bg-red-500/20 text-red-500' :
+                    alertConfig.type === 'warning' ? 'bg-amber-500/20 text-amber-500' :
+                    'bg-blue-500/20 text-blue-500'
+                  }`}>
+                    {alertConfig.type === 'error' ? (
+                      <HiOutlineExclamationTriangle className="h-10 w-10" />
+                    ) : alertConfig.type === 'warning' ? (
+                      <HiOutlineExclamationTriangle className="h-10 w-10" />
+                    ) : (
+                      <HiOutlineCheckCircle className="h-10 w-10" />
+                    )}
+                  </div>
+                  <h2 className="text-2xl font-bold text-white">{alertConfig.title}</h2>
+                  <p className="mt-3 text-[#94A3B8] leading-relaxed">
+                    {alertConfig.message}
+                  </p>
+                </div>
+
+                <div className="bg-[#111827] p-6 flex justify-center">
+                  <button
+                    onClick={handleCloseModal}
+                    className={`rounded-xl px-8 py-3 text-sm font-bold text-white transition-all ${
+                      alertConfig.type === 'error' ? 'bg-red-600 hover:bg-red-500' :
+                      alertConfig.type === 'warning' ? 'bg-amber-600 hover:bg-amber-500' :
+                      'bg-[#3B82F6] hover:bg-blue-500'
+                    }`}
+                  >
+                    Understood
                   </button>
                 </div>
               </div>
