@@ -1,7 +1,6 @@
 import { useState, useEffect, useContext } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { 
-  HiOutlineWrenchScrewdriver, 
   HiOutlineEye, 
   HiOutlinePencilSquare, 
   HiOutlineTrash,
@@ -13,22 +12,26 @@ import {
   HiOutlineUser,
   HiOutlineUserPlus,
   HiOutlineMagnifyingGlass,
-  HiOutlineFunnel
+  HiOutlineChevronLeft,
+  HiOutlineChevronRight
 } from 'react-icons/hi2'
 import { AuthContext } from '../services/AuthContext'
+import { apiClient } from '../services/axiosConfig'
+import type { User } from '../services/authService'
 
 const CATEGORIES = [
   'Electrical', 'Plumbing', 'IT & Network', 'AV & Projector', 
   'HVAC / Air Con', 'Furniture', 'Janitorial', 'Other'
 ]
 import { Pill, SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
-import CommentSection from '../components/CommentSection'
 import { 
   getAllTickets, 
   updateTicketStatus,
   updateTicket,
   deleteTicket,
   selfAssign,
+  assignTechnician,
+  unassignTechnician,
   type TicketResponseDTO 
 } from '../services/ticketService'
 import { formatDistanceToNow } from 'date-fns'
@@ -41,15 +44,19 @@ export default function MaintenancePage() {
   
   const [searchParams] = useSearchParams()
   const [tickets, setTickets] = useState<TicketResponseDTO[]>([])
-  const [filter, setFilter] = useState<'all' | 'mine'>(searchParams.get('filter') === 'mine' ? 'mine' : 'all')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL')
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
   
-  const [activeModal, setActiveModal] = useState<'view' | 'edit' | 'delete' | null>(null)
+  const [activeModal, setActiveModal] = useState<'view' | 'edit' | 'delete' | 'assign' | null>(null)
   const [selectedTicket, setSelectedTicket] = useState<TicketResponseDTO | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [technicians, setTechnicians] = useState<User[]>([])
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
   
   // For Edit Form
   const [editForm, setEditForm] = useState<Partial<TicketResponseDTO>>({})
@@ -58,10 +65,13 @@ export default function MaintenancePage() {
     fetchTickets()
   }, [])
 
+  // Reset to page 1 when filters change
   useEffect(() => {
-    const q = searchParams.get('filter')
-    if (q === 'mine') setFilter('mine')
-    else if (q === 'all') setFilter('all')
+    setCurrentPage(1)
+  }, [searchTerm, statusFilter, priorityFilter, categoryFilter])
+
+  useEffect(() => {
+    // We no longer use the filter search param here to avoid getting stuck in a partial view
   }, [searchParams])
 
   const fetchTickets = async () => {
@@ -77,26 +87,41 @@ export default function MaintenancePage() {
   }
 
   const list = tickets.filter((t) => {
-    const matchesSearch = searchTerm === '' || 
-      t.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      t.description.toLowerCase().includes(searchTerm.toLowerCase())
+    const search = searchTerm.toLowerCase().trim()
+    const idSearch = search.startsWith('tk-') ? search.replace('tk-', '') : search
+    
+    const matchesSearch = search === '' || 
+      t.title.toLowerCase().includes(search) || 
+      t.description.toLowerCase().includes(search) ||
+      t.id.toString().includes(idSearch) ||
+      (t.userName && t.userName.toLowerCase().includes(search)) ||
+      (t.assignedToName && t.assignedToName.toLowerCase().includes(search))
     
     const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter
     const matchesPriority = priorityFilter === 'ALL' || t.priority === priorityFilter
     const matchesCategory = categoryFilter === 'ALL' || t.category === categoryFilter
     
     let matchesQueue = true
-    if (filter === 'mine') {
-       // Using == for loose comparison in case of string/number mismatch from different providers
-       matchesQueue = t.assignedToId != null && user?.id != null && String(t.assignedToId) === String(user.id)
-    }
 
     return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesQueue
   })
 
-  const handleOpenModal = (type: 'view' | 'edit' | 'delete', ticket: TicketResponseDTO) => {
+  // Pagination Logic
+  const totalPages = Math.ceil(list.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const paginatedList = list.slice(startIndex, startIndex + itemsPerPage)
+
+  const handleOpenModal = async (type: 'view' | 'edit' | 'delete' | 'assign', ticket: TicketResponseDTO) => {
     setSelectedTicket(ticket)
-    setEditForm(ticket)
+    if (type === 'edit') setEditForm(ticket)
+    if (type === 'assign') {
+      try {
+        const res = await apiClient.get<User[]>('/api/admin/users')
+        setTechnicians(res.data.filter(u => u.role === 'TECHNICIAN'))
+      } catch (err) {
+        console.error('Failed to fetch technicians', err)
+      }
+    }
     setActiveModal(type)
   }
 
@@ -153,6 +178,30 @@ export default function MaintenancePage() {
     }
   }
 
+  const handleAssignToTechnician = async (technicianId: number) => {
+    if (!selectedTicket) return
+    try {
+      await assignTechnician(selectedTicket.id, technicianId)
+      await fetchTickets()
+      handleCloseModal()
+    } catch (err) {
+      console.error('Failed to assign technician', err)
+      alert('Error assigning technician. Check console for details.')
+    }
+  }
+
+  const handleUnassign = async () => {
+    if (!selectedTicket) return
+    try {
+      await unassignTechnician(selectedTicket.id)
+      await fetchTickets()
+      handleCloseModal()
+    } catch (err) {
+      console.error('Failed to unassign ticket', err)
+      alert('Error unassigning ticket. Check console for details.')
+    }
+  }
+
 
   return (
     <div className="relative -mx-4 sm:-mx-6 lg:-mx-8">
@@ -169,27 +218,6 @@ export default function MaintenancePage() {
               >
                 Back to Dashboard
               </Link>
-
-              {filter === 'all' && (
-                <div className="flex rounded-xl border border-[#1F2937] bg-[#111827] p-1">
-                  <button
-                    onClick={() => setFilter('all')}
-                    className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
-                      filter === 'all' ? 'bg-[#3B82F6] text-white shadow-lg' : 'text-[#64748B] hover:text-white'
-                    }`}
-                  >
-                    All Tickets
-                  </button>
-                  <button
-                    onClick={() => setFilter('mine')}
-                    className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
-                      filter === 'mine' ? 'bg-[#3B82F6] text-white shadow-lg' : 'text-[#64748B] hover:text-white'
-                    }`}
-                  >
-                    My Queue
-                  </button>
-                </div>
-              )}
             </div>
           }
         />
@@ -201,15 +229,14 @@ export default function MaintenancePage() {
               <HiOutlineMagnifyingGlass className="absolute left-3 top-3 h-5 w-5 text-[#475569]" />
               <input
                 type="text"
-                placeholder="Search tickets..."
+                placeholder="Search by Title, ID (e.g. TK-10), Reporter or Assignee..."
+                className="h-11 w-full rounded-xl border border-[#1F2937] bg-[#0F172A] pl-10 pr-4 text-sm text-white placeholder:text-[#475569] focus:border-[#3B82F6] focus:outline-none"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-11 w-full rounded-xl border border-[#1F2937] bg-[#111827] pl-10 pr-4 text-white placeholder:text-[#475569] focus:border-[#3B82F6] focus:outline-none"
               />
             </div>
 
-            {filter === 'all' && (
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
                 {/* Status Filter */}
                 <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
                   <span className="text-[10px] font-bold uppercase text-[#475569]">Status</span>
@@ -259,12 +286,10 @@ export default function MaintenancePage() {
                   </select>
                 </div>
               </div>
-            )}
           </div>
         </div>
 
-        {filter === 'all' && (
-          <div className="mt-8 grid gap-4 sm:grid-cols-4">
+        <div className="mt-8 grid gap-4 sm:grid-cols-4">
             <div className={tilePanel}>
               <p className="text-xs font-semibold uppercase text-[#94A3B8]">Total Tickets</p>
               <p className="mt-2 text-2xl font-bold text-white">{tickets.length}</p>
@@ -286,9 +311,8 @@ export default function MaintenancePage() {
               <p className="mt-2 text-2xl font-bold text-emerald-400">
                 {tickets.filter(t => t.status === 'RESOLVED').length}
               </p>
-            </div>
           </div>
-        )}
+        </div>
 
         <ul className="mt-8 space-y-4">
           {isLoading ? (
@@ -297,7 +321,7 @@ export default function MaintenancePage() {
               <p>Fetching campus tickets...</p>
             </div>
           ) : (
-            list.map((t) => {
+            paginatedList.map((t) => {
               const priority = t.priority.toLowerCase()
               const borderAccent =
                 priority === 'urgent' || priority === 'high'
@@ -335,6 +359,10 @@ export default function MaintenancePage() {
                       </span>
                       <span className="flex items-center gap-1.5">
                         <HiOutlineUser className="h-4 w-4 text-[#64748B]" />
+                        {t.userName || 'Anonymous'}
+                      </span>
+                      <span className="flex items-center gap-1.5 border-l border-[#1F2937] pl-4">
+                        <span className="text-[#64748B]">Assigned:</span>
                         {assigneeText}
                       </span>
                     </div>
@@ -350,11 +378,11 @@ export default function MaintenancePage() {
                     </Pill>
                     
                     <div className="ml-2 flex items-center gap-1">
-                      {!t.assignedToId && (user?.role === 'TECHNICIAN' || user?.role === 'ADMIN') && (
+                      {((!t.assignedToId && user?.role === 'TECHNICIAN') || user?.role === 'ADMIN') && (
                         <button 
-                          onClick={() => handleSelfAssign(t.id)}
+                          onClick={() => user?.role === 'ADMIN' ? handleOpenModal('assign', t) : handleSelfAssign(t.id)}
                           className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#334155] hover:text-emerald-400 transition-all"
-                          title="Self-Assign"
+                          title={user?.role === 'ADMIN' ? "Assign Technician" : "Self-Assign"}
                         >
                           <HiOutlineUserPlus className="h-5 w-5" />
                         </button>
@@ -390,6 +418,66 @@ export default function MaintenancePage() {
         </ul>
 
 
+        {list.length > 0 && (
+          <div className="mt-8 flex items-center justify-between border-t border-[#1F2937] pt-6">
+            <p className="text-sm text-[#64748B]">
+              Showing <span className="font-medium text-white">{startIndex + 1}</span> to{' '}
+              <span className="font-medium text-white">
+                {Math.min(startIndex + itemsPerPage, list.length)}
+              </span>{' '}
+              of <span className="font-medium text-white">{list.length}</span> tickets
+            </p>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1F2937] bg-[#111827] text-[#94A3B8] transition-all hover:bg-[#1E293B] hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <HiOutlineChevronLeft className="h-5 w-5" />
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {[...Array(totalPages)].map((_, i) => {
+                  const page = i + 1
+                  // Only show current, first, last, and neighbors if many pages
+                  if (
+                    totalPages > 7 &&
+                    page !== 1 &&
+                    page !== totalPages &&
+                    Math.abs(page - currentPage) > 1
+                  ) {
+                    if (Math.abs(page - currentPage) === 2) return <span key={page} className="px-1 text-[#475569]">...</span>
+                    return null
+                  }
+
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`h-10 w-10 rounded-xl text-sm font-bold transition-all ${
+                        currentPage === page
+                          ? 'bg-[#3B82F6] text-white shadow-lg shadow-blue-500/20'
+                          : 'border border-[#1F2937] bg-[#111827] text-[#64748B] hover:border-[#334155] hover:text-white'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1F2937] bg-[#111827] text-[#94A3B8] transition-all hover:bg-[#1E293B] hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <HiOutlineChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {list.length === 0 ? (
           <div className={`${panelLg} mt-8 py-12 text-center`}>
             <p className="text-[#64748B]">No tickets match this filter.</p>
@@ -422,7 +510,7 @@ export default function MaintenancePage() {
                   </button>
                 </div>
                 
-                <div className="max-h-[80vh] overflow-y-auto p-6 space-y-8">
+                <div className="max-h-[80vh] overflow-y-auto custom-scrollbar p-6 space-y-8">
                   <div className="space-y-6">
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className={tilePanel}>
@@ -461,27 +549,27 @@ export default function MaintenancePage() {
                       </div>
                     )}
                     
-                    <div className="grid gap-4 sm:grid-cols-3 text-sm pb-6">
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 text-sm pb-6 border-b border-[#1F2937]/50">
                       <div>
-                        <h4 className="font-semibold text-[#64748B]">Category</h4>
-                        <p className="mt-1 text-white">{selectedTicket.category}</p>
+                        <h4 className="font-bold uppercase tracking-wider text-[10px] text-[#64748B]">Category</h4>
+                        <p className="mt-1 text-white font-medium">{selectedTicket.category}</p>
                       </div>
                       <div>
-                        <h4 className="font-semibold text-[#64748B]">Location</h4>
-                        <p className="mt-1 text-white">{selectedTicket.location || 'Campus'}</p>
+                        <h4 className="font-bold uppercase tracking-wider text-[10px] text-[#64748B]">Location</h4>
+                        <p className="mt-1 text-white font-medium">{selectedTicket.location || 'Campus'}</p>
                       </div>
                       <div>
-                        <h4 className="font-semibold text-[#64748B]">Assignee</h4>
-                        <p className="mt-1 text-white">{selectedTicket.assignedToName || 'Unassigned'}</p>
+                        <h4 className="font-bold uppercase tracking-wider text-[10px] text-[#64748B]">Reporter</h4>
+                        <p className="mt-1 text-[#3B82F6] font-bold">{selectedTicket.userName || 'Anonymous'}</p>
+                      </div>
+                      <div>
+                        <h4 className="font-bold uppercase tracking-wider text-[10px] text-[#64748B]">Assignee</h4>
+                        <p className="mt-1 text-amber-500 font-bold">{selectedTicket.assignedToName || 'Unassigned'}</p>
                       </div>
                     </div>
                   </div>
 
-                  {/* COMMENT SECTION */}
-                  <div className="border-t border-[#1F2937] pt-8">
-                    <CommentSection ticketId={selectedTicket.id.toString()} />
                   </div>
-                </div>
                 
                 <div className="bg-[#111827] p-6 flex justify-end">
                   <button 
@@ -599,6 +687,76 @@ export default function MaintenancePage() {
                   >
                     <HiOutlineTrash className="h-5 w-5" />
                     Delete Permanently
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ASSIGN MODAL */}
+            {activeModal === 'assign' && (
+              <div className="flex flex-col">
+                <div className="flex items-center justify-between border-b border-[#1F2937] p-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">Assign Technician</h2>
+                    <p className="mt-1 text-sm text-[#64748B]">Select a staff member for TK-{selectedTicket.id}</p>
+                  </div>
+                  <button onClick={handleCloseModal} className="rounded-full p-2 text-[#94A3B8] hover:bg-[#1F2937] hover:text-white transition-all">
+                    <HiOutlineXMark className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <div className="max-h-[60vh] overflow-y-auto p-6">
+                  {selectedTicket.assignedToId && (
+                    <div className="mb-6">
+                      <button
+                        onClick={handleUnassign}
+                        className="flex w-full items-center justify-between rounded-2xl border border-rose-500/30 bg-rose-500/5 p-4 transition-all hover:bg-rose-500/10"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500/20 text-rose-500">
+                            <HiOutlineXMark className="h-6 w-6" />
+                          </div>
+                          <div className="text-left">
+                            <p className="font-bold text-rose-500">Unassign Current Technician</p>
+                            <p className="text-xs text-rose-500/70">Remove {selectedTicket.assignedToName} from this ticket</p>
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="grid gap-3">
+                    {technicians.length === 0 ? (
+                      <p className="py-8 text-center text-[#64748B]">No technicians found.</p>
+                    ) : (
+                      technicians.map((tech) => (
+                        <button
+                          key={tech.id}
+                          onClick={() => handleAssignToTechnician(tech.id)}
+                          className="flex items-center justify-between rounded-2xl border border-[#1F2937] bg-[#111827] p-4 transition-all hover:border-[#3B82F6]/50 hover:bg-[#1E293B]"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10 text-blue-500 font-bold">
+                              {tech.name.charAt(0)}
+                            </div>
+                            <div className="text-left">
+                              <p className="font-bold text-white">{tech.name}</p>
+                              <p className="text-xs text-[#64748B]">{tech.email}</p>
+                            </div>
+                          </div>
+                          <HiOutlineUserPlus className="h-5 w-5 text-[#3B82F6]" />
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-[#111827] p-6 flex justify-end">
+                  <button 
+                    onClick={handleCloseModal}
+                    className="rounded-xl border border-[#334155] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#1F2937] transition-all"
+                  >
+                    Cancel
                   </button>
                 </div>
               </div>

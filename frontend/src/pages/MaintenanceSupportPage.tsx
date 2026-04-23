@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   HiOutlineWrenchScrewdriver as WrenchIcon, 
@@ -16,6 +16,9 @@ import { createTicket } from '../services/ticketService'
 import type { TicketRequestDTO } from '../services/ticketService'
 import { SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
 import MyTicketsTab from '../components/MyTicketsTab'
+import { useAuth } from '../services/useAuth'
+import { userService, type UserDTO } from '../services/userService'
+import { HiOutlineUser } from 'react-icons/hi2'
 
 const CATEGORIES = [
   'Electrical', 'Plumbing', 'IT & Network', 'AV & Projector', 
@@ -45,19 +48,43 @@ export default function MaintenanceSupportPage() {
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null)
   const [isSuccess, setIsSuccess] = useState(false)
   
+  // Staff 'on behalf of' state
+  const { user } = useAuth()
+  const [allUsers, setAllUsers] = useState<UserDTO[]>([])
+  const [userSearchQuery, setUserSearchQuery] = useState('')
+  const [showUserList, setShowUserList] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<UserDTO | null>(null)
+  const userDropdownRef = useRef<HTMLDivElement>(null)
+  
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchResources()
+    if (user?.role === 'ADMIN' || user?.role === 'TECHNICIAN') {
+      fetchUsers()
+    }
+
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowResourceList(false)
       }
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setShowUserList(false)
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  }, [user])
+
+  async function fetchUsers() {
+    try {
+      const response = await userService.getAllUsers()
+      setAllUsers(response.data)
+    } catch (err) {
+      console.error('Failed to fetch users', err)
+    }
+  }
 
   async function fetchResources() {
     try {
@@ -97,11 +124,20 @@ export default function MaintenanceSupportPage() {
     res.location.toLowerCase().includes(searchQuery.toLowerCase())
   ).slice(0, 5)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const filteredUsers = allUsers.filter(u => 
+    u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) || 
+    u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
+  ).slice(0, 5)
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     try {
-      await createTicket(formData, images)
+      const ticketData = {
+        ...formData,
+        onBehalfOfUserId: selectedUser?.id
+      }
+      await createTicket(ticketData, images)
       setIsSuccess(true)
       // Reset form
       setFormData({
@@ -111,6 +147,8 @@ export default function MaintenanceSupportPage() {
       setImages([])
       setPreviews([])
       setSelectedResource(null)
+      setSelectedUser(null)
+      setUserSearchQuery('')
     } catch (err) {
       console.error('Failed to create ticket', err)
       alert('Error submitting report. Please try again.')
@@ -181,6 +219,56 @@ export default function MaintenanceSupportPage() {
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className={panelLg}>
                 <div className="grid gap-6 sm:grid-cols-2">
+                  {(user?.role === 'ADMIN' || user?.role === 'TECHNICIAN') && (
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-bold text-amber-500 uppercase tracking-widest mb-1">Report on behalf of (Staff Only)</label>
+                      <div className="relative mt-2" ref={userDropdownRef}>
+                        <HiOutlineUser className="absolute left-3 top-3.5 h-4 w-4 text-[#475569]" />
+                        <input
+                          type="text"
+                          placeholder={selectedUser ? `Acting for: ${selectedUser.name}` : "Search person by name or email (e.g. John Doe...)"}
+                          value={selectedUser ? selectedUser.name : userSearchQuery}
+                          onChange={(e) => {
+                            setUserSearchQuery(e.target.value)
+                            if (selectedUser) { setSelectedUser(null); }
+                            setShowUserList(true)
+                          }}
+                          onFocus={() => setShowUserList(true)}
+                          className={`h-11 w-full rounded-xl border border-[#1F2937] bg-[#0F172A] pl-10 pr-4 text-white placeholder:text-[#475569] ${selectedUser ? 'ring-1 ring-amber-500/50' : ''}`}
+                        />
+                        {showUserList && userSearchQuery && !selectedUser && (
+                          <div className="absolute z-[60] mt-2 w-full overflow-hidden rounded-xl border border-[#1F2937] bg-[#111827] shadow-2xl">
+                            {filteredUsers.length > 0 ? (
+                              filteredUsers.map(u => (
+                                <button 
+                                  key={u.id} 
+                                  type="button" 
+                                  onClick={() => { setSelectedUser(u); setShowUserList(false); }} 
+                                  className="flex w-full flex-col px-4 py-3 text-left hover:bg-[#1F2937]"
+                                >
+                                  <span className="text-sm font-medium text-white">{u.name}</span>
+                                  <span className="text-xs text-[#64748B]">{u.email} · {u.role}</span>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="px-4 py-3 text-sm text-[#64748B]">No users found</div>
+                            )}
+                          </div>
+                        )}
+                        {selectedUser && (
+                           <button 
+                             type="button"
+                             onClick={() => { setSelectedUser(null); setUserSearchQuery(''); }}
+                             className="absolute right-3 top-3 text-[#64748B] hover:text-white"
+                           >
+                             <XIcon className="h-5 w-5" />
+                           </button>
+                        )}
+                      </div>
+                      <p className="mt-2 text-[10px] text-[#64748B] italic">Leave empty to report as yourself ({user?.name}).</p>
+                    </div>
+                  )}
+
                   <div className="sm:col-span-2">
                     <label className="block text-sm font-semibold text-white">Title</label>
                     <input

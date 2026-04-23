@@ -50,6 +50,15 @@ public class TicketService {
                     .orElseThrow(() -> new ResourceNotFoundException("Resource not found with id: " + dto.getResourceId()));
         }
 
+        User ticketOwner = user;
+        if (dto.getOnBehalfOfUserId() != null && 
+            (user.getRole() == com.smartcampus.security.Role.ADMIN || 
+             user.getRole() == com.smartcampus.security.Role.TECHNICIAN)) {
+            ticketOwner = userRepository.findById(dto.getOnBehalfOfUserId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Target user for reporting not found with id: " + dto.getOnBehalfOfUserId()));
+            log.info("Technician/Admin {} reporting on behalf of user {}", user.getEmail(), ticketOwner.getEmail());
+        }
+
         Ticket ticket = new Ticket();
         ticket.setTitle(dto.getTitle());
         ticket.setDescription(dto.getDescription());
@@ -58,7 +67,7 @@ public class TicketService {
         ticket.setPriority(TicketPriority.valueOf(dto.getPriority().toUpperCase()));
         ticket.setStatus(TicketStatus.OPEN);
         ticket.setResource(resource);
-        ticket.setUser(user);
+        ticket.setUser(ticketOwner);
         
         if (resource != null) {
             ticket.setLocation(resource.getLocation());
@@ -277,6 +286,23 @@ public class TicketService {
 
         ticket.setAssignedTo(technician);
         log.info("Ticket {} assigned to technician {}", ticketId, technician.getEmail());
+        
+        Ticket updatedTicket = ticketRepository.save(ticket);
+        mongoTicketSyncService.upsertTicket(updatedTicket);
+        return convertToResponseDTO(updatedTicket);
+    }
+
+    @Transactional
+    public TicketResponseDTO unassignTechnician(Long ticketId, User currentUser) {
+        if (currentUser.getRole() != com.smartcampus.security.Role.ADMIN) {
+            throw new org.springframework.security.access.AccessDeniedException("Only admins can unassign tickets");
+        }
+
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + ticketId));
+
+        ticket.setAssignedTo(null);
+        log.info("Ticket {} unassigned by admin {}", ticketId, currentUser.getEmail());
         
         Ticket updatedTicket = ticketRepository.save(ticket);
         mongoTicketSyncService.upsertTicket(updatedTicket);

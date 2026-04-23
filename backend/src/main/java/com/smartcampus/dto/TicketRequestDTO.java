@@ -38,4 +38,6 @@ public class TicketRequestDTO {
     private String status; // OPEN, IN_PROGRESS, RESOLVED, CLOSED
 
     private java.util.List<Long> removedAttachmentIds; // IDs of images to delete
+    
+    private Long onBehalfOfUserId; // ID of the user on whose behalf the ticket is being reported
 }

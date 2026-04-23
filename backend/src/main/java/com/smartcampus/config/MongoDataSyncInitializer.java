@@ -3,12 +3,10 @@ package com.smartcampus.config;
 import com.smartcampus.entity.User;
 import com.smartcampus.model.Attachment;
 import com.smartcampus.model.Booking;
-import com.smartcampus.model.Comment;
 import com.smartcampus.model.Resource;
 import com.smartcampus.model.Ticket;
 import com.smartcampus.repository.AttachmentRepository;
 import com.smartcampus.repository.BookingRepository;
-import com.smartcampus.repository.CommentRepository;
 import com.smartcampus.repository.ResourceRepository;
 import com.smartcampus.repository.TicketRepository;
 import com.smartcampus.repository.UserRepository;
@@ -35,7 +33,6 @@ public class MongoDataSyncInitializer implements ApplicationRunner {
     private final ResourceRepository resourceRepository;
     private final BookingRepository bookingRepository;
     private final TicketRepository ticketRepository;
-    private final CommentRepository commentRepository;
     private final AttachmentRepository attachmentRepository;
 
     @Value("${spring.data.mongodb.uri:}")
@@ -61,7 +58,6 @@ public class MongoDataSyncInitializer implements ApplicationRunner {
             syncCollection("resources", buildResourceDocuments(resourceRepository.findAll()));
             syncCollection("bookings", buildBookingDocuments(bookingRepository.findAll()));
             syncCollection("tickets", buildTicketDocuments(ticketRepository.findAll()));
-            syncCollection("comments", buildCommentDocuments(commentRepository.findAll()));
             syncCollection("attachments", buildAttachmentDocuments(attachmentRepository.findAll()));
             log.info("MongoDB sync completed successfully.");
         } catch (Exception e) {
@@ -170,21 +166,6 @@ public class MongoDataSyncInitializer implements ApplicationRunner {
         return docs;
     }
 
-    private List<Document> buildCommentDocuments(List<Comment> comments) {
-        List<Document> docs = new ArrayList<>();
-        for (Comment comment : comments) {
-            Document doc = new Document();
-            doc.put("_id", String.valueOf(comment.getId()));
-            doc.put("sqlId", comment.getId());
-            doc.put("ticketId", comment.getTicket() != null ? comment.getTicket().getId() : null);
-            doc.put("userId", comment.getUser() != null ? comment.getUser().getId() : null);
-            doc.put("content", comment.getContent());
-            doc.put("createdAt", comment.getCreatedAt() != null ? comment.getCreatedAt().toString() : null);
-            doc.put("updatedAt", comment.getUpdatedAt() != null ? comment.getUpdatedAt().toString() : null);
-            docs.add(doc);
-        }
-        return docs;
-    }
 
     private List<Document> buildAttachmentDocuments(List<Attachment> attachments) {
         List<Document> docs = new ArrayList<>();

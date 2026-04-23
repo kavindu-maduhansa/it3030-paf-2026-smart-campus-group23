@@ -19,6 +19,13 @@ export interface BookingsByType {
   bookingCount: number;
 }
 
+export interface AdminStats {
+  totalUsers: number;
+  pendingBookings: number;
+  openTickets: number;
+  activeResources: number;
+}
+
 const ANALYTICS_API = '/api/admin/analytics';
 
 export const analyticsService = {
@@ -109,6 +116,19 @@ export const analyticsService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching resource utilization:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get administrative summary stats
+   */
+  getAdminStats: async (): Promise<AdminStats> => {
+    try {
+      const response = await apiClient.get<AdminStats>(`${ANALYTICS_API}/admin-stats`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching admin stats:', error);
       throw error;
     }
   }

@@ -9,6 +9,7 @@ export interface TicketRequestDTO {
   resourceId?: number
   status?: string
   removedAttachmentIds?: number[]
+  onBehalfOfUserId?: number
 }
 
 export interface AttachmentDTO {
@@ -29,21 +30,13 @@ export interface TicketResponseDTO {
   userName?: string
   assignedToId?: number | null
   assignedToName?: string | null
+  resourceId?: number
   resourceName?: string
   location?: string
   imageUrls: string[]
   attachments?: AttachmentDTO[]
   createdAt: string
   updatedAt: string
-}
-
-export interface CommentResponseDTO {
-  id: number
-  content: string
-  authorName: string
-  authorRole: string
-  createdAt: string
-  isMe: boolean
 }
 
 const API_URL = '/api/tickets'
@@ -112,11 +105,8 @@ export const assignTechnician = (id: number, technicianId: number) =>
 export const selfAssign = (id: number) =>
   apiClient.patch<TicketResponseDTO>(`${API_URL}/${id}/self-assign`)
 
-export const getComments = (ticketId: number) =>
-  apiClient.get<CommentResponseDTO[]>(`${API_URL}/${ticketId}/comments`)
-
-export const addComment = (ticketId: number, content: string) =>
-  apiClient.post<CommentResponseDTO>(`${API_URL}/${ticketId}/comments`, { content })
+export const unassignTechnician = (id: number) =>
+  apiClient.patch<TicketResponseDTO>(`${API_URL}/${id}/unassign`)
 
 export const deleteTicket = (id: number) =>
   apiClient.delete(`${API_URL}/${id}`)

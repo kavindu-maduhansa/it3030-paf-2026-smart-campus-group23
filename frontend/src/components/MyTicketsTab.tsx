@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { HiOutlineClock, HiOutlineMapPin, HiOutlineChatBubbleLeftRight, HiOutlineEye, HiOutlinePencilSquare, HiOutlineXMark, HiOutlineCheckCircle, HiOutlineUser, HiOutlinePlus } from 'react-icons/hi2'
-import { getMyTickets, updateTicketStatus, updateTicket, getComments } from '../services/ticketService'
-import type { TicketResponseDTO, CommentResponseDTO } from '../services/ticketService'
+import { getMyTickets, updateTicketStatus, updateTicket } from '../services/ticketService'
+import type { TicketResponseDTO } from '../services/ticketService'
 import { Pill, panelLg, tilePanel } from '../pages/dashboard/dashboardUi'
-import CommentSection from './CommentSection'
 
 const CATEGORIES = [
   'Electrical', 'Plumbing', 'IT & Network', 'AV & Projector', 
@@ -17,7 +16,6 @@ export default function MyTicketsTab() {
   const [activeModal, setActiveModal] = useState<'view' | 'edit' | null>(null)
   const [editForm, setEditForm] = useState<Partial<TicketResponseDTO>>({})
   const [isUpdating, setIsUpdating] = useState(false)
-  const [hasStaffResponded, setHasStaffResponded] = useState(false)
   const [removedImageIds, setRemovedImageIds] = useState<number[]>([])
   const [newImages, setNewImages] = useState<File[]>([])
 
@@ -46,15 +44,6 @@ export default function MyTicketsTab() {
       
       setRemovedImageIds([])
       setNewImages([])
-
-      // Check if staff has responded to enable chat
-      if (type === 'view') {
-        const comments = await getComments(ticket.id)
-        const staffResponded = comments.data.some(c => 
-          c.authorRole === 'TECHNICIAN' || c.authorRole === 'ADMIN'
-        )
-        setHasStaffResponded(staffResponded)
-      }
     } catch (err) {
       console.error('Failed to open modal', err)
     }
@@ -224,7 +213,7 @@ export default function MyTicketsTab() {
             </div>
 
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-8 space-y-8">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-8">
               {activeModal === 'view' ? (
                 <>
                   <div className="grid gap-6 sm:grid-cols-2">
@@ -244,12 +233,19 @@ export default function MyTicketsTab() {
                     <p className="mt-2 text-[#94A3B8] leading-relaxed whitespace-pre-wrap">{selectedTicket.description}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-6 text-sm">
+                   <div className="grid grid-cols-3 gap-6 text-sm">
                     <div>
                       <h4 className="font-semibold text-[#64748B]">Resource/Location</h4>
                       <div className="mt-2 flex items-center gap-2 text-white">
                         <HiOutlineMapPin className="h-4 w-4 text-[#3B82F6]" />
                         {selectedTicket.resourceName || 'General Campus'}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-[#64748B]">Reporter</h4>
+                      <div className="mt-2 flex items-center gap-2 text-white">
+                        <HiOutlineUser className="h-4 w-4 text-[#3B82F6]" />
+                        {selectedTicket.userName || 'Anonymous'}
                       </div>
                     </div>
                     <div>
@@ -280,20 +276,6 @@ export default function MyTicketsTab() {
                     </div>
                   )}
 
-                  {/* Comment Section (Technician View Style) */}
-                  {hasStaffResponded && (
-                    <div className="border-t border-[#1F2937] pt-8">
-                      <CommentSection ticketId={selectedTicket.id.toString()} />
-                    </div>
-                  )}
-                  {!hasStaffResponded && (
-                    <div className="rounded-2xl bg-blue-500/5 p-6 border border-blue-500/10 text-center">
-                      <HiOutlineChatBubbleLeftRight className="h-8 w-8 text-blue-500/50 mx-auto mb-3" />
-                      <p className="text-sm text-[#94A3B8]">
-                        The conversation will be available here once a technician joins and sends a message.
-                      </p>
-                    </div>
-                  )}
                 </>
               ) : (
                 <div className="space-y-6">

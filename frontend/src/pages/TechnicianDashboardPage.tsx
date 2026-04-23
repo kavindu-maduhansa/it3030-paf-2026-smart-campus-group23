@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   HiOutlineBolt,
@@ -16,28 +16,19 @@ import {
   HiOutlineXMark,
   HiOutlineClock,
   HiOutlineUser,
-  HiOutlineCheckCircle,
-  HiOutlinePaperClip,
-  HiOutlineChevronRight,
   HiOutlineExclamationTriangle,
 } from 'react-icons/hi2'
 import { DashboardDecor, Pill, SectionHeader, panelLg, tilePanel, featureCard, iconBase } from './dashboard/dashboardUi'
 import { useAuth } from '../services/useAuth'
 import { 
   getAssignedTickets, 
-  updateTicketStatus,
   updateTicket,
   deleteTicket,
   selfAssign,
   type TicketResponseDTO 
 } from '../services/ticketService'
 import { formatDistanceToNow } from 'date-fns'
-import CommentSection from '../components/CommentSection'
 
-const CATEGORIES = [
-  'Electrical', 'Plumbing', 'IT & Network', 'AV & Projector', 
-  'HVAC / Air Con', 'Furniture', 'Janitorial', 'Other'
-]
 
 const equipmentHealth = [
   { name: 'Central HVAC System', health: 88, status: 'Stable' },
@@ -110,7 +101,7 @@ export default function TechnicianDashboardPage() {
     setActiveModal('edit')
   }
 
-  const handleUpdateTicket = async (e: React.FormEvent) => {
+  const handleUpdateTicket = async (e: FormEvent) => {
     e.preventDefault()
     if (!selectedTicket) return
     setIsUpdating(true)
@@ -151,17 +142,6 @@ export default function TechnicianDashboardPage() {
     }
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files)
-      const currentAttachmentsCount = (selectedTicket?.attachments?.length || 0) - removedAttachmentIds.length
-      if (currentAttachmentsCount + selectedFiles.length + newFiles.length > 3) {
-        alert('Maximum 3 images allowed per ticket')
-        return
-      }
-      setSelectedFiles([...selectedFiles, ...newFiles])
-    }
-  }
 
   return (
     <DashboardDecor>
@@ -421,46 +401,42 @@ export default function TechnicianDashboardPage() {
           <div className="relative w-full max-w-4xl transform overflow-hidden rounded-[2.5rem] border border-[#334155] bg-[#0F172A] shadow-2xl transition-all">
             
             {activeModal === 'view' && (
-              <div className="flex h-[85vh] flex-col lg:flex-row">
-                {/* Left: Content */}
-                <div className="flex flex-1 flex-col overflow-y-auto p-8 lg:p-10">
-                  <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                {/* Content */}
+                <div className="p-8 lg:p-10">
+                  <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <span className="font-mono text-xs font-bold text-[#475569]">TK-{selectedTicket.id}</span>
                       <Pill variant={selectedTicket.priority === 'HIGH' || selectedTicket.priority === 'URGENT' ? 'danger' : 'warning'}>
                         {selectedTicket.priority}
                       </Pill>
                     </div>
-                    <button onClick={handleCloseModal} className="rounded-full bg-white/5 p-2 text-[#64748B] hover:text-white transition-colors lg:hidden">
+                    <button onClick={handleCloseModal} className="rounded-full bg-white/5 p-2 text-[#64748B] hover:text-white transition-colors">
                       <HiOutlineXMark className="h-6 w-6" />
                     </button>
                   </div>
 
-                  <h2 className="mt-4 text-3xl font-bold text-white leading-tight">{selectedTicket.title}</h2>
+                  <h2 className="text-3xl font-bold text-white leading-tight">{selectedTicket.title}</h2>
                   
-                  <div className="mt-10 grid grid-cols-2 gap-8 border-y border-[#1F2937]/50 py-8">
-                    <div className="space-y-6">
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Reporter</p>
-                        <p className="mt-2 text-sm font-bold text-white">{selectedTicket.userName}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Location</p>
-                        <p className="mt-2 flex items-center gap-2 text-sm font-bold text-white">
-                          <HiOutlineMapPin className="h-4 w-4 text-[#3B82F6]" />
-                          {selectedTicket.resourceName || selectedTicket.location}
-                        </p>
-                      </div>
+                  <div className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-6 border-y border-[#1F2937]/50 py-6">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Reporter</p>
+                      <p className="mt-1 text-sm font-bold text-white">{selectedTicket.userName || 'Anonymous'}</p>
                     </div>
-                    <div className="space-y-6">
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Current Status</p>
-                        <p className="mt-2 text-sm font-black uppercase tracking-wider text-[#3B82F6]">{selectedTicket.status.replace('_', ' ')}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Date Logged</p>
-                        <p className="mt-2 text-sm font-bold text-white">{formatDistanceToNow(new Date(selectedTicket.createdAt), { addSuffix: true })}</p>
-                      </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Location</p>
+                      <p className="mt-1 flex items-center gap-2 text-sm font-bold text-white">
+                        <HiOutlineMapPin className="h-4 w-4 text-[#3B82F6]" />
+                        {selectedTicket.resourceName || selectedTicket.location}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Status</p>
+                      <p className="mt-1 text-sm font-black uppercase tracking-wider text-[#3B82F6]">{selectedTicket.status.replace('_', ' ')}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Logged</p>
+                      <p className="mt-1 text-sm font-bold text-white">{formatDistanceToNow(new Date(selectedTicket.createdAt), { addSuffix: true })}</p>
                     </div>
                   </div>
 
@@ -485,19 +461,6 @@ export default function TechnicianDashboardPage() {
                     </div>
                   )}
                 </div>
-
-                {/* Right: Comments */}
-                <div className="flex flex-1 flex-col bg-[#0F172A] border-l border-[#1F2937]">
-                  <div className="flex items-center justify-between border-b border-[#1F2937] px-8 py-4 bg-[#111827]/50">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-widest">Conversation</h3>
-                    <button onClick={handleCloseModal} className="hidden lg:block rounded-full bg-white/5 p-2 text-[#64748B] hover:text-white transition-colors">
-                      <HiOutlineXMark className="h-6 w-6" />
-                    </button>
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <CommentSection ticketId={selectedTicket.id} />
-                  </div>
-                </div>
               </div>
             )}
 
@@ -513,117 +476,43 @@ export default function TechnicianDashboardPage() {
                   </button>
                 </div>
 
-                <div className="max-h-[70vh] overflow-y-auto p-8">
-                  <div className="grid gap-8 lg:grid-cols-2">
-                    <div className="space-y-6">
-                      <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Ticket Title</label>
-                        <input 
-                          type="text" 
-                          value={editForm.title} 
-                          onChange={(e) => setEditForm({...editForm, title: e.target.value})}
-                          className="mt-2 w-full rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3 text-sm text-white focus:border-[#3B82F6] focus:ring-0" 
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Category</label>
-                        <select 
-                          value={editForm.category} 
-                          onChange={(e) => setEditForm({...editForm, category: e.target.value})}
-                          className="mt-2 w-full rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3 text-sm text-white focus:border-[#3B82F6] focus:ring-0"
-                        >
-                          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Ticket Status</label>
-                        <div className="mt-2 flex gap-3">
-                          {['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map(s => (
-                            <button 
-                              key={s} type="button"
-                              onClick={() => setEditForm({...editForm, status: s})}
-                              className={`flex-1 rounded-xl border py-2 text-[9px] font-bold transition-all ${
-                                editForm.status === s 
-                                ? 'border-[#3B82F6] bg-blue-500/10 text-[#3B82F6]' 
-                                : 'border-[#1F2937] bg-[#0F172A] text-[#475569] hover:border-[#334155]'
-                              }`}
-                            >
-                              {s.replace('_', ' ')}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Priority Level</label>
-                        <div className="mt-2 flex gap-3">
-                          {['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map(p => (
-                            <button 
-                              key={p} type="button"
-                              onClick={() => setEditForm({...editForm, priority: p})}
-                              className={`flex-1 rounded-xl border py-2 text-[10px] font-bold transition-all ${
-                                editForm.priority === p 
-                                ? 'border-[#3B82F6] bg-blue-500/10 text-[#3B82F6]' 
-                                : 'border-[#1F2937] bg-[#0F172A] text-[#475569] hover:border-[#334155]'
-                              }`}
-                            >
-                              {p}
-                            </button>
-                          ))}
-                        </div>
+                <div className="p-8 space-y-8">
+                  <div className="max-w-md mx-auto space-y-8">
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Ticket Status</label>
+                      <div className="mt-3 flex flex-wrap gap-3">
+                        {['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map(s => (
+                          <button 
+                            key={s} type="button"
+                            onClick={() => setEditForm({...editForm, status: s})}
+                            className={`flex-1 rounded-2xl border py-3 text-xs font-bold transition-all ${
+                              editForm.status === s 
+                              ? 'border-[#3B82F6] bg-blue-500/10 text-[#3B82F6] shadow-lg shadow-blue-500/10' 
+                              : 'border-[#1F2937] bg-[#0F172A] text-[#475569] hover:border-[#334155]'
+                            }`}
+                          >
+                            {s.replace('_', ' ')}
+                          </button>
+                        ))}
                       </div>
                     </div>
 
-                    <div className="space-y-6">
-                      <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Full Description</label>
-                        <textarea 
-                          rows={4} 
-                          value={editForm.description} 
-                          onChange={(e) => setEditForm({...editForm, description: e.target.value})}
-                          className="mt-2 w-full rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3 text-sm text-white focus:border-[#3B82F6] focus:ring-0" 
-                        />
-                      </div>
-                      
-                      {/* Image Management */}
-                      <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Attachments (Max 3)</label>
-                        <div className="mt-3 flex flex-wrap gap-3">
-                          {selectedTicket.attachments?.filter(a => !removedAttachmentIds.includes(a.id)).map(a => (
-                            <div key={a.id} className="group relative h-20 w-20 overflow-hidden rounded-xl border border-[#1F2937]">
-                              <img src={a.url} alt="Attached" className="h-full w-full object-cover" />
-                              <button 
-                                type="button"
-                                onClick={() => setRemovedAttachmentIds([...removedAttachmentIds, a.id])}
-                                className="absolute top-1 right-1 h-5 w-5 rounded-full bg-rose-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <HiOutlineXMark className="h-3 w-3" />
-                              </button>
-                            </div>
-                          ))}
-                          
-                          {selectedFiles.map((file, i) => (
-                            <div key={i} className="group relative h-20 w-20 overflow-hidden rounded-xl border border-[#3B82F6]/50 bg-blue-500/5">
-                              <div className="flex h-full w-full flex-col items-center justify-center text-[#3B82F6]">
-                                <HiOutlinePaperClip className="h-6 w-6" />
-                                <span className="mt-1 text-[8px] font-bold truncate px-1 w-full text-center">{file.name}</span>
-                              </div>
-                              <button 
-                                type="button"
-                                onClick={() => setSelectedFiles(selectedFiles.filter((_, idx) => idx !== i))}
-                                className="absolute top-1 right-1 h-5 w-5 rounded-full bg-rose-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <HiOutlineXMark className="h-3 w-3" />
-                              </button>
-                            </div>
-                          ))}
-
-                          {((selectedTicket.attachments?.length || 0) - removedAttachmentIds.length + selectedFiles.length) < 3 && (
-                            <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#1F2937] text-[#475569] transition-all hover:border-[#3B82F6] hover:text-[#3B82F6] hover:bg-blue-500/5">
-                              <HiOutlinePlus className="h-6 w-6" />
-                              <input type="file" className="hidden" accept="image/*" multiple onChange={handleFileChange} />
-                            </label>
-                          )}
-                        </div>
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Priority Level</label>
+                      <div className="mt-3 flex flex-wrap gap-3">
+                        {['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map(p => (
+                          <button 
+                            key={p} type="button"
+                            onClick={() => setEditForm({...editForm, priority: p})}
+                            className={`flex-1 rounded-2xl border py-3 text-xs font-bold transition-all ${
+                              editForm.priority === p 
+                              ? 'border-[#3B82F6] bg-blue-500/10 text-[#3B82F6] shadow-lg shadow-blue-500/10' 
+                              : 'border-[#1F2937] bg-[#0F172A] text-[#475569] hover:border-[#334155]'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </div>
