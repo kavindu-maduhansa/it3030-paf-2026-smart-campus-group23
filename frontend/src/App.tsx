@@ -10,13 +10,17 @@ import AboutPage from './pages/AboutPage'
 import ContactPage from './pages/ContactPage'
 import DashboardPage from './pages/DashboardPage'
 import HomePage from './pages/HomePage'
+import PrivacyPage from './pages/PrivacyPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import SchedulePage from './pages/SchedulePage'
 import BookingsPage from './pages/BookingsPage'
+import BookingPassPage from './pages/BookingPassPage'
 import MaintenancePage from './pages/MaintenancePage'
 import MaintenanceSupportPage from './pages/MaintenanceSupportPage'
+import SupportPage from './pages/SupportPage'
 import TechnicianDashboardPage from './pages/TechnicianDashboardPage'
+import TermsPage from './pages/TermsPage'
 import { AnalyticsDashboard } from './components/AnalyticsDashboard'
 
 function App() {
@@ -28,8 +32,12 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/support" element={<SupportPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/booking-pass" element={<BookingPassPage />} />
             {/* Redirect /sign-in to /login for compatibility */}
             <Route path="/sign-in" element={<Navigate to="/login" replace />} />
             <Route

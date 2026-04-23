@@ -27,6 +27,10 @@ export interface RegisterData {
   confirmPassword: string
 }
 
+export interface UpdateProfilePayload {
+  name: string
+}
+
 export const getAuthStatus = async (): Promise<AuthStatus> => {
   try {
     const response = await apiClient.get<AuthStatus>(`${API_URL}/status`)
@@ -71,4 +75,9 @@ export const logout = async () => {
     // Force logout anyway
     window.location.href = '/login'
   }
+}
+
+export const updateProfile = async (payload: UpdateProfilePayload): Promise<User> => {
+  const response = await apiClient.patch<User>(`${API_URL}/profile`, payload)
+  return response.data
 }

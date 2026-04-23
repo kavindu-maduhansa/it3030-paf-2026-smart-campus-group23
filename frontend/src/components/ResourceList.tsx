@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AxiosError } from 'axios'
-import { Link } from 'react-router-dom'
 import { getResources, deleteResource, filterResources, toggleResourceStatus } from '../services/resourceService'
 import type { Resource, FilterParams } from '../services/resourceService'
 import type { ResourceEvent } from '../services/webSocketService'
+import { createBooking } from '../services/bookingService'
 import ResourceSearch from './ResourceSearch'
 import ResourceFilter from './ResourceFilter'
 import ResourceFormModal from './ResourceFormModal'
@@ -12,6 +12,13 @@ import { useWebSocket } from '../hooks/useWebSocket'
 
 // Helper function to determine availability status
 type AvailabilityStatus = 'AVAILABLE_NOW' | 'AVAILABLE_SOON' | 'NOT_AVAILABLE'
+type BookingFormState = {
+  bookingDate: string
+  startTime: string
+  endTime: string
+  purpose: string
+  expectedAttendees: string
+}
 
 const getAvailabilityStatus = (resource: Resource): AvailabilityStatus => {
   // If neither time is provided, consider it available now
@@ -101,6 +108,17 @@ const ResourceList = () => {
   const [showForm, setShowForm] = useState(false)
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null)
   const [refreshTime, setRefreshTime] = useState(0) // Triggers re-render for availability updates
+  const [bookingResource, setBookingResource] = useState<Resource | null>(null)
+  const [bookingSubmitting, setBookingSubmitting] = useState(false)
+  const [bookingSuccess, setBookingSuccess] = useState<string | null>(null)
+  const [bookingError, setBookingError] = useState<string | null>(null)
+  const [bookingForm, setBookingForm] = useState<BookingFormState>({
+    bookingDate: '',
+    startTime: '09:00',
+    endTime: '10:00',
+    purpose: '',
+    expectedAttendees: '',
+  })
 
   const loadResources = useCallback(async () => {
     // Don't attempt to load resources if not authenticated
@@ -215,6 +233,117 @@ const ResourceList = () => {
       alert('Failed to toggle resource status')
     } finally {
       setTogglingId(null)
+    }
+  }
+
+  const openBookingModal = (resource: Resource) => {
+    setBookingResource(resource)
+    setBookingError(null)
+    setBookingSuccess(null)
+    setBookingForm({
+      bookingDate: '',
+      startTime: '09:00',
+      endTime: '10:00',
+      purpose: '',
+      expectedAttendees: '',
+    })
+  }
+
+  const closeBookingModal = () => {
+    if (bookingSubmitting) return
+    setBookingResource(null)
+  }
+
+  const handleBookingChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target
+    setBookingForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleBookingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBookingError(null)
+    setBookingSuccess(null)
+
+    if (!bookingResource) return
+
+    const trimmedPurpose = bookingForm.purpose.trim()
+    if (!bookingForm.bookingDate) {
+      setBookingError('Please select a booking date')
+      return
+    }
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const selectedDate = new Date(`${bookingForm.bookingDate}T00:00:00`)
+    if (Number.isNaN(selectedDate.getTime()) || selectedDate < today) {
+      setBookingError('Booking date cannot be in the past')
+      return
+    }
+
+    if (!bookingForm.startTime || !bookingForm.endTime) {
+      setBookingError('Please select start and end time')
+      return
+    }
+    if (bookingForm.endTime <= bookingForm.startTime) {
+      setBookingError('End time must be after start time')
+      return
+    }
+
+    if (!trimmedPurpose) {
+      setBookingError('Purpose is required')
+      return
+    }
+    if (trimmedPurpose.length < 5) {
+      setBookingError('Purpose must be at least 5 characters')
+      return
+    }
+
+    if (!bookingForm.expectedAttendees) {
+      setBookingError('Expected attendees is required')
+      return
+    }
+    const attendeeCount = Number(bookingForm.expectedAttendees)
+    if (!Number.isFinite(attendeeCount) || attendeeCount < 1) {
+      setBookingError('Expected attendees must be at least 1')
+      return
+    }
+    if (bookingResource.capacity && attendeeCount > bookingResource.capacity) {
+      setBookingError(`Expected attendees cannot exceed capacity (${bookingResource.capacity})`)
+      return
+    }
+    if (!bookingResource.id) {
+      setBookingError('Invalid resource selected')
+      return
+    }
+
+    try {
+      setBookingSubmitting(true)
+      await createBooking({
+        resourceId: bookingResource.id,
+        bookingDate: bookingForm.bookingDate,
+        startTime: bookingForm.startTime,
+        endTime: bookingForm.endTime,
+        purpose: trimmedPurpose,
+        expectedAttendees: attendeeCount,
+      })
+      setBookingSuccess(`Booking request submitted for ${bookingResource.name}`)
+      setTimeout(() => {
+        setBookingResource(null)
+      }, 700)
+    } catch (err: unknown) {
+      const axiosError = err as AxiosError<unknown>
+      const data = axiosError?.response?.data
+      const message =
+        (typeof data === 'string'
+          ? data
+          : (data as { message?: string; error?: string } | undefined)?.message ||
+            (data as { message?: string; error?: string } | undefined)?.error) ||
+        'Failed to submit booking request'
+      setBookingError(message)
+    } finally {
+      setBookingSubmitting(false)
     }
   }
 
@@ -425,13 +554,14 @@ const ResourceList = () => {
 
                 {canBookResources && (
                   <div className="mt-5">
-                    <Link
-                      to="/bookings"
-                      state={{ resourceId: resource.id, resourceName: resource.name }}
-                      className="inline-flex w-full items-center justify-center rounded-lg bg-[#3B82F6] px-3 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-500"
+                    <button
+                      type="button"
+                      onClick={() => openBookingModal(resource)}
+                      disabled={!isActive}
+                      className="inline-flex w-full items-center justify-center rounded-lg bg-[#3B82F6] px-3 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-[#334155] disabled:text-[#94A3B8]"
                     >
-                      Book Now
-                    </Link>
+                      {isActive ? 'Book Now' : 'Out of Service'}
+                    </button>
                   </div>
                 )}
               </article>
@@ -449,6 +579,140 @@ const ResourceList = () => {
           }}
           onSaved={loadResources}
         />
+      )}
+
+      {bookingResource && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-[#1F2937] bg-[#111827] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#1F2937] px-6 py-5">
+              <div>
+                <h2 className="text-xl font-bold text-white">Book Resource</h2>
+                <p className="mt-1 text-sm text-[#94A3B8]">{bookingResource.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeBookingModal}
+                className="text-[#94A3B8] transition-colors hover:text-white"
+                aria-label="Close booking form"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleBookingSubmit} className="space-y-4 px-6 py-5">
+              {bookingError && (
+                <div className="rounded-lg border border-[#EF4444]/30 bg-[#1E293B] px-4 py-3 text-sm text-[#F87171]">
+                  {bookingError}
+                </div>
+              )}
+              {bookingSuccess && (
+                <div className="rounded-lg border border-emerald-500/30 bg-[#1E293B] px-4 py-3 text-sm text-emerald-300">
+                  {bookingSuccess}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="bookingDate" className="block text-sm font-semibold text-[#CBD5E1]">
+                    Date
+                  </label>
+                  <input
+                    id="bookingDate"
+                    name="bookingDate"
+                    type="date"
+                    required
+                    min={new Date().toISOString().split('T')[0]}
+                    value={bookingForm.bookingDate}
+                    onChange={handleBookingChange}
+                    className="mt-2 w-full rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-2 text-white focus:border-[#3B82F6] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="expectedAttendees" className="block text-sm font-semibold text-[#CBD5E1]">
+                    Expected attendees
+                  </label>
+                  <input
+                    id="expectedAttendees"
+                    name="expectedAttendees"
+                    type="number"
+                    min="1"
+                    max={bookingResource.capacity ?? undefined}
+                    required
+                    value={bookingForm.expectedAttendees}
+                    onChange={handleBookingChange}
+                    className="mt-2 w-full rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-2 text-white focus:border-[#3B82F6] focus:outline-none"
+                    placeholder="e.g., 20"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="startTime" className="block text-sm font-semibold text-[#CBD5E1]">
+                    Start time
+                  </label>
+                  <input
+                    id="startTime"
+                    name="startTime"
+                    type="time"
+                    required
+                    value={bookingForm.startTime}
+                    onChange={handleBookingChange}
+                    className="mt-2 w-full rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-2 text-white focus:border-[#3B82F6] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="endTime" className="block text-sm font-semibold text-[#CBD5E1]">
+                    End time
+                  </label>
+                  <input
+                    id="endTime"
+                    name="endTime"
+                    type="time"
+                    required
+                    value={bookingForm.endTime}
+                    onChange={handleBookingChange}
+                    className="mt-2 w-full rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-2 text-white focus:border-[#3B82F6] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="purpose" className="block text-sm font-semibold text-[#CBD5E1]">
+                  Purpose
+                </label>
+                <textarea
+                  id="purpose"
+                  name="purpose"
+                  rows={3}
+                  required
+                  minLength={5}
+                  value={bookingForm.purpose}
+                  onChange={handleBookingChange}
+                  placeholder="Add booking purpose"
+                  className="mt-2 w-full rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-2 text-white focus:border-[#3B82F6] focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 border-t border-[#1F2937] pt-4">
+                <button
+                  type="button"
+                  onClick={closeBookingModal}
+                  className="rounded-lg px-4 py-2 text-sm font-semibold text-[#CBD5E1] hover:bg-[#1E293B]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={bookingSubmitting}
+                  className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-500 disabled:opacity-50"
+                >
+                  {bookingSubmitting ? 'Submitting...' : 'Submit Booking'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   )

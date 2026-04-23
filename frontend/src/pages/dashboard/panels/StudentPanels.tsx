@@ -1,16 +1,58 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { HiOutlineArrowTopRightOnSquare, HiOutlineLightBulb, HiOutlineSparkles } from 'react-icons/hi2'
 import type { User } from '../../../services/authService'
+import { getMyBookings, type BookingResponse } from '../../../services/bookingService'
 import { KpiMini, Pill, SectionHeader, panelLg, tilePanel } from '../dashboardUi'
-
-const upcoming = [
-  { title: 'Computer Lab 1 · Project workshop', when: 'Thu 10 Apr · 14:00–16:00', status: 'confirmed' as const },
-  { title: 'Study pod · Building B', when: 'Sat 12 Apr · 10:00–12:00', status: 'pending' as const },
-  { title: 'Meeting Room 101 · Group sync', when: 'Mon 14 Apr · 09:00–10:00', status: 'confirmed' as const },
-]
 
 export default function StudentPanels({ user }: { user: User | null }) {
   const first = user?.name?.trim().split(/\s+/)[0] ?? 'there'
+  const [bookings, setBookings] = useState<BookingResponse[]>([])
+
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      try {
+        const response = await getMyBookings()
+        if (mounted) {
+          setBookings(Array.isArray(response.data) ? response.data : [])
+        }
+      } catch {
+        if (mounted) {
+          setBookings([])
+        }
+      }
+    }
+    void load()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const upcoming = useMemo(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return bookings
+      .filter((row) => {
+        const date = new Date(`${row.bookingDate}T00:00:00`)
+        return date >= today && (row.status === 'APPROVED' || row.status === 'PENDING')
+      })
+      .sort((a, b) => {
+        const dateA = new Date(`${a.bookingDate}T00:00:00`).getTime()
+        const dateB = new Date(`${b.bookingDate}T00:00:00`).getTime()
+        if (dateA !== dateB) return dateA - dateB
+        return String(a.startTime).localeCompare(String(b.startTime))
+      })
+      .slice(0, 3)
+  }, [bookings])
+
+  const formatWhen = (row: BookingResponse) => {
+    const date = new Date(`${row.bookingDate}T00:00:00`)
+    const dateText = Number.isNaN(date.getTime())
+      ? row.bookingDate
+      : date.toLocaleDateString(undefined, { weekday: 'short', day: '2-digit', month: 'short' })
+    return `${dateText} · ${String(row.startTime).slice(0, 5)}-${String(row.endTime).slice(0, 5)}`
+  }
 
   return (
     <section className="mt-12 space-y-10" aria-label="Student workspace">
@@ -18,10 +60,14 @@ export default function StudentPanels({ user }: { user: User | null }) {
         <SectionHeader
           eyebrow="At a glance"
           title="Your campus week"
-          subtitle="Snapshot of reservations and shortcuts — live data will replace demos when bookings API is connected."
+          subtitle="Snapshot of reservations and shortcuts based on your current bookings."
         />
         <div className="grid gap-4 sm:grid-cols-3">
-          <KpiMini label="Active bookings" value="2" hint="Including 1 awaiting approval" />
+          <KpiMini
+            label="Active bookings"
+            value={String(bookings.filter((b) => b.status === 'APPROVED' || b.status === 'PENDING').length)}
+            hint={`Including ${bookings.filter((b) => b.status === 'PENDING').length} awaiting approval`}
+          />
           <KpiMini
             label="Facilities favourited"
             value="4"
@@ -50,17 +96,21 @@ export default function StudentPanels({ user }: { user: User | null }) {
             </Link>
           </div>
           <ul className="mt-4 divide-y divide-[#1F2937]">
-            {upcoming.map((row) => (
-              <li key={row.title} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="font-medium text-white">{row.title}</p>
-                  <p className="mt-1 text-sm text-[#94A3B8]">{row.when}</p>
-                </div>
-                <Pill variant={row.status === 'confirmed' ? 'success' : 'warning'}>
-                  {row.status === 'confirmed' ? 'Confirmed' : 'Pending'}
-                </Pill>
-              </li>
-            ))}
+            {upcoming.length === 0 ? (
+              <li className="py-6 text-sm text-[#94A3B8]">No upcoming reservations yet.</li>
+            ) : (
+              upcoming.map((row) => (
+                <li key={row.id} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-medium text-white">{row.resourceName}</p>
+                    <p className="mt-1 text-sm text-[#94A3B8]">{formatWhen(row)}</p>
+                  </div>
+                  <Pill variant={row.status === 'APPROVED' ? 'success' : 'warning'}>
+                    {row.status === 'APPROVED' ? 'Confirmed' : 'Pending'}
+                  </Pill>
+                </li>
+              ))
+            )}
           </ul>
         </div>
 

@@ -5,7 +5,11 @@ import { defineConfig, loadEnv } from 'vite'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const backendTarget = env.VITE_BACKEND_ORIGIN || 'http://127.0.0.1:8080'
+  // Keep dev proxy aligned with the backend default port and .env overrides.
+  const backendTarget =
+    env.VITE_BACKEND_ORIGIN ||
+    env.VITE_API_URL ||
+    'http://127.0.0.1:8081'
 
   return {
     plugins: [react(), tailwindcss()],

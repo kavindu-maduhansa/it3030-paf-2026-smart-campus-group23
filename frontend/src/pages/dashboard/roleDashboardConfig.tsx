@@ -73,13 +73,6 @@ export const ROLE_DASHBOARD: Record<CampusRole, RoleDashboardConfig> = {
         iconClass: 'bg-amber-500/15 text-[#F59E0B] ring-1 ring-amber-500/30',
       },
       {
-        to: '/profile',
-        title: 'Settings',
-        description: 'Edit profile, notifications, and security preferences.',
-        Icon: HiOutlinePencilSquare,
-        iconClass: 'bg-red-500/15 text-[#EF4444] ring-1 ring-red-500/30',
-      },
-      {
         to: '/maintenance/report',
         title: 'Support & Tickets',
         description: 'Report incidents and track your existing maintenance requests.',
@@ -164,13 +157,6 @@ export const ROLE_DASHBOARD: Record<CampusRole, RoleDashboardConfig> = {
         description: 'Session slots, venues, and equipment tied to your teaching.',
         Icon: HiOutlineCalendar,
         iconClass: 'bg-amber-500/15 text-[#F59E0B] ring-1 ring-amber-500/30',
-      },
-      {
-        to: '/schedule',
-        title: 'Teaching schedule',
-        description: 'Week view of classes and confirmed room allocations.',
-        Icon: HiOutlineClipboardDocumentList,
-        iconClass: 'bg-cyan-500/15 text-[#06B6D4] ring-1 ring-cyan-500/30',
       },
       {
         to: '/maintenance/report',

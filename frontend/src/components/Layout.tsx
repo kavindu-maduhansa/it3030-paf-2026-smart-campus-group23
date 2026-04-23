@@ -21,6 +21,7 @@ function navLinkClass(isActive: boolean) {
 export default function Layout({ children }: LayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { isAuthenticated, user } = useAuth()
+  const isAdmin = user?.role === 'ADMIN'
 
   const closeMobile = () => setMobileOpen(false)
 
@@ -67,23 +68,25 @@ export default function Layout({ children }: LayoutProps) {
             >
               Contact
             </NavLink>
-            <NavLink
-              to="/dashboard"
-              className={({ isActive }) => navLinkClass(isActive)}
-            >
-              Dashboard
-            </NavLink>
-            <NavLink
-              to="/resources"
-              className={({ isActive }) => navLinkClass(isActive)}
-            >
-              Facilities
-            </NavLink>
+            {isAdmin ? (
+              <NavLink
+                to="/resources"
+                className={({ isActive }) => navLinkClass(isActive)}
+              >
+                Facilities
+              </NavLink>
+            ) : null}
             <NavLink
               to="/maintenance"
               className={({ isActive }) => navLinkClass(isActive)}
             >
               Maintenance
+            </NavLink>
+            <NavLink
+              to="/dashboard"
+              className={({ isActive }) => navLinkClass(isActive)}
+            >
+              Dashboard
             </NavLink>
           </nav>
 
@@ -153,26 +156,28 @@ export default function Layout({ children }: LayoutProps) {
             >
               Contact
             </NavLink>
-            <NavLink
-              to="/dashboard"
-              onClick={closeMobile}
-              className={({ isActive }) => `${navLinkClass(isActive)} px-4 py-3`}
-            >
-              Dashboard
-            </NavLink>
-            <NavLink
-              to="/resources"
-              onClick={closeMobile}
-              className={({ isActive }) => `${navLinkClass(isActive)} px-4 py-3`}
-            >
-              Facilities
-            </NavLink>
+            {isAdmin ? (
+              <NavLink
+                to="/resources"
+                onClick={closeMobile}
+                className={({ isActive }) => `${navLinkClass(isActive)} px-4 py-3`}
+              >
+                Facilities
+              </NavLink>
+            ) : null}
             <NavLink
               to="/maintenance"
               onClick={closeMobile}
               className={({ isActive }) => `${navLinkClass(isActive)} px-4 py-3`}
             >
               Maintenance
+            </NavLink>
+            <NavLink
+              to="/dashboard"
+              onClick={closeMobile}
+              className={({ isActive }) => `${navLinkClass(isActive)} px-4 py-3`}
+            >
+              Dashboard
             </NavLink>
             {isAuthenticated && user ? (
               <div className="mt-4 border-t border-[#1F2937] pt-4">
@@ -219,24 +224,24 @@ export default function Layout({ children }: LayoutProps) {
             className="flex flex-wrap items-center gap-x-6 gap-y-2"
             aria-label="Footer"
           >
-            <a
-              href="#privacy"
+            <Link
+              to="/privacy"
               className="text-sm font-medium text-[#94A3B8] transition-colors hover:text-white"
             >
               Privacy
-            </a>
-            <a
-              href="#terms"
+            </Link>
+            <Link
+              to="/terms"
               className="text-sm font-medium text-[#94A3B8] transition-colors hover:text-white"
             >
               Terms
-            </a>
-            <a
-              href="#support"
+            </Link>
+            <Link
+              to="/support"
               className="text-sm font-medium text-[#94A3B8] transition-colors hover:text-white"
             >
-              Support
-            </a>
+              Facility Support
+            </Link>
             <Link
               to="/about"
               className="text-sm font-medium text-[#94A3B8] transition-colors hover:text-white"
@@ -249,14 +254,6 @@ export default function Layout({ children }: LayoutProps) {
             >
               Contact
             </Link>
-            <a
-              href="https://github.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm font-medium text-[#94A3B8] transition-colors hover:text-white"
-            >
-              GitHub
-            </a>
           </nav>
         </div>
       </footer>

@@ -1,7 +1,18 @@
 import { Link } from 'react-router-dom'
 import { hubFeatures, hubHeroHighlights, hubStats } from '../content/hubContent'
+import { useAuth } from '../services/useAuth'
 
 export default function HomePage() {
+  const { user, isAuthenticated } = useAuth()
+  const isTechnician = user?.role === 'TECHNICIAN'
+  const visibleHubFeatures = isTechnician
+    ? hubFeatures.filter((feature) => feature.title !== 'Smart booking')
+    : hubFeatures
+  const featureGridClass =
+    visibleHubFeatures.length <= 3
+      ? 'mt-14 mx-auto grid max-w-5xl gap-6 sm:grid-cols-2 lg:mt-16 lg:grid-cols-3 lg:gap-8'
+      : 'mt-14 grid gap-6 sm:grid-cols-2 lg:mt-16 lg:grid-cols-4 lg:gap-8'
+
   return (
     <div className="bg-[#020617]">
       <section
@@ -47,7 +58,7 @@ export default function HomePage() {
 
           <div className="mt-10 flex w-full max-w-md flex-col items-stretch gap-3 sm:max-w-none sm:flex-row sm:justify-center sm:gap-4">
             <Link
-              to="/resources"
+              to={isAuthenticated ? '/dashboard' : '/resources'}
               className="inline-flex min-h-[3rem] items-center justify-center rounded-xl bg-[#3B82F6] px-8 text-base font-semibold text-white shadow-[0_0_28px_rgba(59,130,246,0.45)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-blue-500 hover:shadow-[0_0_36px_rgba(59,130,246,0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#60A5FA]"
             >
               Get started
@@ -106,8 +117,8 @@ export default function HomePage() {
             informed without switching tools.
           </p>
 
-          <ul className="mt-14 grid gap-6 sm:grid-cols-2 lg:mt-16 lg:grid-cols-4 lg:gap-8">
-            {hubFeatures.map(({ to, title, description, Icon, circleClass }) => (
+          <ul className={featureGridClass}>
+            {visibleHubFeatures.map(({ to, title, description, Icon, circleClass }) => (
               <li key={title}>
                 <Link
                   to={to}
@@ -179,17 +190,28 @@ export default function HomePage() {
             id="cta-heading"
             className="text-3xl font-bold tracking-tight text-white sm:text-4xl"
           >
-            Ready to streamline your campus?
+            {isAuthenticated ? 'Welcome back to Smart Campus' : 'Ready to streamline your campus?'}
           </h2>
           <p className="mt-4 text-lg leading-relaxed text-[#94A3B8]">
-            Join hundreds of staff and students already using Smart Campus for their daily operations
+            {isAuthenticated
+              ? 'Go to your dashboard and continue managing bookings, facilities, and support tasks.'
+              : 'Join hundreds of staff and students already using Smart Campus for their daily operations'}
           </p>
-          <Link
-            to="/sign-in"
-            className="mt-10 inline-flex min-h-[3rem] items-center justify-center rounded-xl bg-[#3B82F6] px-8 text-base font-semibold text-white shadow-[0_0_28px_rgba(59,130,246,0.45)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-blue-600 hover:shadow-[0_0_36px_rgba(59,130,246,0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3B82F6]"
-          >
-            Sign up with Google
-          </Link>
+          {isAuthenticated ? (
+            <Link
+              to="/support"
+              className="mt-10 inline-flex min-h-[3rem] items-center justify-center rounded-xl bg-[#3B82F6] px-8 text-base font-semibold text-white shadow-[0_0_28px_rgba(59,130,246,0.45)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-blue-600 hover:shadow-[0_0_36px_rgba(59,130,246,0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3B82F6]"
+            >
+              Get Support
+            </Link>
+          ) : (
+            <Link
+              to="/sign-in"
+              className="mt-10 inline-flex min-h-[3rem] items-center justify-center rounded-xl bg-[#3B82F6] px-8 text-base font-semibold text-white shadow-[0_0_28px_rgba(59,130,246,0.45)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-blue-600 hover:shadow-[0_0_36px_rgba(59,130,246,0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3B82F6]"
+            >
+              Sign up with Google
+            </Link>
+          )}
         </div>
       </section>
     </div>
