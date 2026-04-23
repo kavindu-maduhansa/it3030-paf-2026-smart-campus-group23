@@ -7,12 +7,14 @@ import com.smartcampus.exception.ResourceNotFoundException;
 import com.smartcampus.model.Resource;
 import com.smartcampus.model.Ticket;
 import com.smartcampus.model.Attachment;
+import com.smartcampus.model.Notification;
 import com.smartcampus.model.Ticket.TicketPriority;
 import com.smartcampus.model.Ticket.TicketStatus;
 import com.smartcampus.repository.AttachmentRepository;
 import com.smartcampus.repository.ResourceRepository;
 import com.smartcampus.repository.TicketRepository;
 import com.smartcampus.repository.UserRepository;
+import com.smartcampus.security.Role;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,7 @@ public class TicketService {
     private final FileStorageService fileStorageService;
     private final UserRepository userRepository;
     private final MongoTicketSyncService mongoTicketSyncService;
+    private final NotificationService notificationService;
 
     @Transactional
     public TicketResponseDTO createTicket(TicketRequestDTO dto, User user, org.springframework.web.multipart.MultipartFile[] images) {
@@ -66,6 +69,9 @@ public class TicketService {
 
         Ticket savedTicket = ticketRepository.save(ticket);
         mongoTicketSyncService.upsertTicket(savedTicket);
+
+        // Create notification for all admins
+        notifyAdminsAboutTicket(savedTicket);
 
         // Day 3: Handle attachments
         if (images != null && images.length > 0) {
@@ -309,8 +315,24 @@ public class TicketService {
         return convertToResponseDTO(ticket);
     }
 
-    public org.springframework.core.io.Resource loadTicketImage(String filename) {
-        return fileStorageService.loadFileAsResource(filename);
+    private void notifyAdminsAboutTicket(Ticket ticket) {
+        try {
+            List<User> admins = userRepository.findByRole(Role.ADMIN);
+            for (User admin : admins) {
+                String title = "New Support Ticket from " + ticket.getUser().getName();
+                String description = ticket.getTitle() + " (" + ticket.getCategory() + ")";
+                notificationService.createNotification(
+                    admin,
+                    title,
+                    description,
+                    Notification.NotificationType.TICKET,
+                    Notification.NotificationSeverity.INFO
+                );
+            }
+            log.info("Created ticket notifications for {} admins", admins.size());
+        } catch (Exception e) {
+            log.error("Error creating ticket notification", e);
+        }
     }
 
     public TicketResponseDTO convertToResponseDTO(Ticket ticket) {

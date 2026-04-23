@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { HiOutlineExclamationTriangle, HiOutlineShieldExclamation } from 'react-icons/hi2'
 import { KpiMini, Pill, SectionHeader, panelLg, tilePanel } from '../dashboardUi'
+import AdminNotificationPanel from '../../../components/AdminNotificationPanel'
 
 const attention = [
   { title: '12 bookings awaiting approval', detail: 'Mostly lecture halls · Fri peak', severity: 'warning' as const },
@@ -122,6 +123,9 @@ export default function AdminPanels() {
           </Link>
         </div>
       </div>
+
+      {/* Notification Center */}
+      <AdminNotificationPanel />
 
       <div className={tilePanel}>
         <p className="text-sm text-[#94A3B8]">

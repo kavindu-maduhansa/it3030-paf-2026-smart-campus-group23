@@ -29,8 +29,12 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:5173",
+                "http://localhost:5174",
+                "http://localhost:5175",
                 "http://localhost:3000",
                 "http://127.0.0.1:5173",
+                "http://127.0.0.1:5174",
+                "http://127.0.0.1:5175",
                 "http://127.0.0.1:3000"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
@@ -78,11 +82,11 @@ public class SecurityConfig {
                 .userInfoEndpoint(userInfo -> userInfo
                     .userService(customOAuth2UserService)
                 )
-                .defaultSuccessUrl("http://localhost:5173/dashboard", true)
-                .failureUrl("http://localhost:5173/login?error=true")
+                .defaultSuccessUrl("http://localhost:5175/dashboard", true)
+                .failureUrl("http://localhost:5175/login?error=true")
             )
             .logout(logout -> logout
-                .logoutSuccessUrl("http://localhost:5173")
+                .logoutSuccessUrl("http://localhost:5175")
                 .permitAll()
             )
             .exceptionHandling(exception -> exception
