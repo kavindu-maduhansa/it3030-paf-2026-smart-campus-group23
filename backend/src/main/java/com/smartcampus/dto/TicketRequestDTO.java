@@ -34,4 +34,8 @@ public class TicketRequestDTO {
     private String contactDetails;
 
     private Long resourceId; // Optional - if incident is for a specific resource
+    
+    private String status; // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+
+    private java.util.List<Long> removedAttachmentIds; // IDs of images to delete
 }

@@ -4,6 +4,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { HiMenuAlt3, HiX } from 'react-icons/hi'
 import { useAuth } from '../services/useAuth'
 import { logout } from '../services/authService'
+import NotificationBadge from './NotificationBadge'
 
 type LayoutProps = {
   children: ReactNode
@@ -18,10 +19,14 @@ function navLinkClass(isActive: boolean) {
     : `${navLinkBase} text-[#9CA3AF] hover:bg-white/5 hover:text-white`
 }
 
+const ROLES_HIDE_FACILITIES_BOOKINGS = new Set(['STUDENT', 'LECTURER', 'TECHNICIAN'])
+
 export default function Layout({ children }: LayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { isAuthenticated, user } = useAuth()
-  const isAdmin = user?.role === 'ADMIN'
+  const roleUpper = user?.role?.toUpperCase() ?? ''
+  const showFacilities = !roleUpper || !ROLES_HIDE_FACILITIES_BOOKINGS.has(roleUpper)
+  const showBookings = showFacilities && roleUpper !== 'ADMIN'
 
   const closeMobile = () => setMobileOpen(false)
 
@@ -68,20 +73,30 @@ export default function Layout({ children }: LayoutProps) {
             >
               Contact
             </NavLink>
-            {isAdmin ? (
-              <NavLink
-                to="/resources"
-                className={({ isActive }) => navLinkClass(isActive)}
-              >
-                Facilities
-              </NavLink>
-            ) : null}
             <NavLink
               to="/maintenance"
               className={({ isActive }) => navLinkClass(isActive)}
             >
               Maintenance
             </NavLink>
+            {showFacilities ? (
+              <>
+                <NavLink
+                  to="/resources"
+                  className={({ isActive }) => navLinkClass(isActive)}
+                >
+                  Facilities
+                </NavLink>
+              </>
+            ) : null}
+            {showBookings ? (
+              <NavLink
+                to="/bookings"
+                className={({ isActive }) => navLinkClass(isActive)}
+              >
+                Bookings
+              </NavLink>
+            ) : null}
             <NavLink
               to="/dashboard"
               className={({ isActive }) => navLinkClass(isActive)}
@@ -93,6 +108,7 @@ export default function Layout({ children }: LayoutProps) {
           <div className="hidden items-center gap-3 md:flex">
             {isAuthenticated && user ? (
               <>
+                <NotificationBadge />
                 <span className="text-sm text-[#94A3B8]">
                   Welcome, <span className="font-medium text-white">{user.name}</span>
                 </span>
@@ -156,15 +172,6 @@ export default function Layout({ children }: LayoutProps) {
             >
               Contact
             </NavLink>
-            {isAdmin ? (
-              <NavLink
-                to="/resources"
-                onClick={closeMobile}
-                className={({ isActive }) => `${navLinkClass(isActive)} px-4 py-3`}
-              >
-                Facilities
-              </NavLink>
-            ) : null}
             <NavLink
               to="/maintenance"
               onClick={closeMobile}
@@ -172,6 +179,26 @@ export default function Layout({ children }: LayoutProps) {
             >
               Maintenance
             </NavLink>
+            {showFacilities ? (
+              <>
+                <NavLink
+                  to="/resources"
+                  onClick={closeMobile}
+                  className={({ isActive }) => `${navLinkClass(isActive)} px-4 py-3`}
+                >
+                  Facilities
+                </NavLink>
+              </>
+            ) : null}
+            {showBookings ? (
+              <NavLink
+                to="/bookings"
+                onClick={closeMobile}
+                className={({ isActive }) => `${navLinkClass(isActive)} px-4 py-3`}
+              >
+                Bookings
+              </NavLink>
+            ) : null}
             <NavLink
               to="/dashboard"
               onClick={closeMobile}
