@@ -1,5 +1,6 @@
 import { useState, useEffect, useContext } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 import {
   HiOutlineEye,
   HiOutlinePencilSquare,
@@ -35,6 +36,8 @@ import {
   type TicketResponseDTO
 } from '../services/ticketService'
 import { formatDistanceToNow } from 'date-fns'
+import CommentSection from '../components/CommentSection'
+import ConfirmModal from '../components/ConfirmModal'
 
 
 
@@ -67,6 +70,7 @@ export default function MaintenancePage() {
     onConfirm: () => void;
     type?: 'danger' | 'warning' | 'info'
   }>({ title: '', message: '', onConfirm: () => { } })
+  const [showCommentPrompt, setShowCommentPrompt] = useState(false)
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1)
@@ -133,8 +137,9 @@ export default function MaintenancePage() {
   const paginatedList = list.slice(startIndex, startIndex + itemsPerPage)
 
   const showAlert = (title: string, message: string, type: 'error' | 'warning' | 'info' = 'info') => {
-    setAlertConfig({ title, message, type })
-    setActiveModal('alert')
+    if (type === 'error') toast.error(`${title}: ${message}`)
+    else if (type === 'warning') toast(message, { icon: '⚠️' })
+    else toast.success(message)
   }
 
   const handleOpenModal = async (type: 'view' | 'edit' | 'delete' | 'assign', ticket: TicketResponseDTO) => {
@@ -172,6 +177,7 @@ export default function MaintenancePage() {
   const handleCloseModal = () => {
     setActiveModal(null)
     setSelectedTicket(null)
+    setShowCommentPrompt(false)
   }
 
   const handleUpdateTicket = async () => {
@@ -194,7 +200,17 @@ export default function MaintenancePage() {
       })
 
       await fetchTickets()
-      handleCloseModal()
+      
+      if (editForm.status === 'CLOSED' || editForm.status === 'REJECTED') {
+        const updated = tickets.find(t => t.id === selectedTicket.id) || selectedTicket
+        setSelectedTicket({ ...updated, status: editForm.status })
+        setActiveModal('view')
+        setShowCommentPrompt(true)
+        toast.success('Ticket closed and finalized.')
+      } else {
+        handleCloseModal()
+        toast.success('Ticket updated successfully')
+      }
     } catch (err) {
       console.error('Failed to update ticket', err)
       showAlert("Update Failed", "There was an error updating the ticket. Please check the console for details.", "error")
@@ -207,6 +223,7 @@ export default function MaintenancePage() {
       await deleteTicket(selectedTicket.id)
       await fetchTickets()
       handleCloseModal()
+      toast.success('Ticket deleted successfully')
     } catch (err) {
       console.error('Failed to delete ticket', err)
       showAlert("Deletion Failed", "There was an error deleting the ticket.", "error")
@@ -217,6 +234,7 @@ export default function MaintenancePage() {
     try {
       await selfAssign(ticketId)
       await fetchTickets()
+      toast.success('Ticket assigned to you')
     } catch (err) {
       console.error('Failed to self-assign ticket', err)
       showAlert("Assignment Failed", "Could not self-assign the ticket.", "error")
@@ -276,7 +294,8 @@ export default function MaintenancePage() {
             resolutionNotes: rejectionReason
           })
           await fetchTickets()
-          handleCloseModal()
+          setActiveModal('view')
+          setShowCommentPrompt(true)
           setRejectionReason('')
         } catch (err) {
           console.error('Failed to reject ticket', err)
@@ -694,6 +713,15 @@ export default function MaintenancePage() {
                         <p className="mt-1 text-amber-500 font-bold">{selectedTicket.assignedToName || 'Unassigned'}</p>
                       </div>
                     </div>
+
+                    <div className="pt-6 border-t border-[#1F2937]">
+                      <CommentSection 
+                  ticketId={selectedTicket.id} 
+                  autoFocus={showCommentPrompt} 
+                  reporterId={selectedTicket.userId}
+                  assigneeId={selectedTicket.assignedToId}
+                />
+                    </div>
                   </div>
 
                 </div>
@@ -1018,6 +1046,18 @@ export default function MaintenancePage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        show={activeModal === 'confirm'}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        variant={confirmConfig.type || 'warning'}
+        onConfirm={() => {
+          confirmConfig.onConfirm()
+          handleCloseModal()
+        }}
+        onCancel={() => setActiveModal('reject')}
+      />
     </div>
   )
 }

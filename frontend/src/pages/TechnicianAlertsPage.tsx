@@ -13,6 +13,8 @@ import {
 import { SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
 import { getAllAlerts, createAlert, updateAlert, deleteAlert, type TechnicianAlert } from '../services/alertService'
 import { formatDistanceToNow } from 'date-fns'
+import { toast } from 'react-hot-toast'
+import ConfirmModal from '../components/ConfirmModal'
 
 export default function TechnicianAlertsPage() {
   const navigate = useNavigate()
@@ -21,6 +23,7 @@ export default function TechnicianAlertsPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     title: '',
     message: '',
@@ -89,13 +92,14 @@ export default function TechnicianAlertsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this alert?')) return
     try {
       await deleteAlert(id)
       setAlerts(alerts.filter(a => a.id !== id))
+      toast.success('Alert deleted successfully')
+      setShowDeleteConfirm(null)
     } catch (error) {
       console.error('Failed to delete alert:', error)
-      alert('Failed to delete alert')
+      toast.error('Failed to delete alert')
     }
   }
 
@@ -182,8 +186,9 @@ export default function TechnicianAlertsPage() {
                   <HiOutlinePencilSquare className="h-5 w-5" />
                 </button>
                 <button
-                  onClick={() => handleDelete(alert.id)}
+                  onClick={() => setShowDeleteConfirm(alert.id)}
                   className="rounded-lg p-2 text-[#64748B] hover:bg-rose-500/10 hover:text-rose-500 transition-all"
+                  title="Delete Alert"
                 >
                   <HiOutlineTrash className="h-5 w-5" />
                 </button>
@@ -314,6 +319,15 @@ export default function TechnicianAlertsPage() {
           </div>
         </div>
       )}
+      <ConfirmModal
+        show={showDeleteConfirm !== null}
+        title="Delete Alert"
+        message="Are you sure you want to delete this alert? This action cannot be undone."
+        onConfirm={() => showDeleteConfirm && handleDelete(showDeleteConfirm)}
+        onCancel={() => setShowDeleteConfirm(null)}
+        confirmText="Delete"
+        variant="danger"
+      />
     </div>
   )
 }

@@ -19,10 +19,29 @@ import MaintenanceSupportPage from './pages/MaintenanceSupportPage'
 import TechnicianDashboardPage from './pages/TechnicianDashboardPage'
 import TechnicianAlertsPage from './pages/TechnicianAlertsPage'
 import { AnalyticsDashboard } from './components/AnalyticsDashboard'
+import { Toaster } from 'react-hot-toast'
 
 function App() {
   return (
     <BrowserRouter>
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#1F2937',
+            color: '#fff',
+            border: '1px solid #374151',
+            borderRadius: '12px',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10B981',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
       <AuthProvider>
         <Layout>
           <Routes>

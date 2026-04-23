@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { toast } from 'react-hot-toast'
 import { 
   HiOutlineClock, HiOutlineMapPin, HiOutlineChatBubbleLeftRight, 
   HiOutlineEye, HiOutlinePencilSquare, HiOutlineXMark, 
@@ -9,6 +10,8 @@ import {
 import { getMyTickets, updateTicketStatus, updateTicket } from '../services/ticketService'
 import type { TicketResponseDTO } from '../services/ticketService'
 import { Pill, panelLg, tilePanel } from '../pages/dashboard/dashboardUi'
+import CommentSection from './CommentSection'
+import ConfirmModal from './ConfirmModal'
 
 const CATEGORIES = [
   'Electrical', 'Plumbing', 'IT & Network', 'AV & Projector', 
@@ -24,8 +27,9 @@ export default function MyTicketsTab() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [removedImageIds, setRemovedImageIds] = useState<number[]>([])
   const [newImages, setNewImages] = useState<File[]>([])
+  const [showCommentPrompt, setShowCommentPrompt] = useState(false)
   
-  const [confirmModal, setConfirmModal] = useState<{
+  const [confirmConfig, setConfirmConfig] = useState<{
     show: boolean;
     title: string;
     message: string;
@@ -101,6 +105,7 @@ export default function MyTicketsTab() {
   const handleCloseModal = () => {
     setActiveModal(null)
     setSelectedTicket(null)
+    setShowCommentPrompt(false)
   }
 
   const handleUpdateStatus = async (status: string, ticketId?: number) => {
@@ -111,10 +116,23 @@ export default function MyTicketsTab() {
       setIsUpdating(true)
       await updateTicketStatus(id, status)
       await loadTickets()
-      if (activeModal) handleCloseModal()
+      
+      if (status === 'CLOSED' || status === 'REJECTED') {
+        // If we were in a modal, stay in it but show comments. If not, open it.
+        const updatedTicket = tickets.find(t => t.id === id) || selectedTicket
+        if (updatedTicket) {
+          setSelectedTicket({ ...updatedTicket, status }) // Optimistic status update for UI
+          setActiveModal('view')
+          setShowCommentPrompt(true)
+          toast.success('Ticket closed.')
+        }
+      } else if (activeModal) {
+        handleCloseModal()
+        toast.success('Status updated.')
+      }
     } catch (err) {
       console.error('Failed to update status', err)
-      alert('Error updating ticket status.')
+      toast.error('Error updating ticket status.')
     } finally {
       setIsUpdating(false)
     }
@@ -135,9 +153,10 @@ export default function MyTicketsTab() {
       }, newImages)
       await loadTickets()
       handleCloseModal()
+      toast.success('Changes saved')
     } catch (err) {
       console.error('Failed to save edit', err)
-      alert('Error saving changes.')
+      toast.error('Error saving changes.')
     } finally {
       setIsUpdating(false)
     }
@@ -275,7 +294,7 @@ export default function MyTicketsTab() {
                   )}
                   <button 
                     onClick={() => {
-                      setConfirmModal({
+                      setConfirmConfig({
                         show: true,
                         title: 'Close Ticket',
                         message: `Are you sure you want to close ticket TK-${t.id}? This will mark the issue as finalized.`,
@@ -469,6 +488,15 @@ export default function MyTicketsTab() {
                     </div>
                   )}
 
+                  <div className="pt-6 border-t border-[#1F2937]">
+                    <CommentSection 
+                      ticketId={selectedTicket.id} 
+                      autoFocus={showCommentPrompt} 
+                      reporterId={selectedTicket.userId}
+                      assigneeId={selectedTicket.assignedToId}
+                    />
+                  </div>
+
                 </>
               ) : (
                 <div className="space-y-6">
@@ -584,7 +612,7 @@ export default function MyTicketsTab() {
                 <button
                   disabled={isUpdating}
                   onClick={() => {
-                    setConfirmModal({
+                    setConfirmConfig({
                       show: true,
                       title: 'Close Ticket',
                       message: `Are you sure you want to close ticket TK-${selectedTicket.id}? This will mark the issue as finalized.`,
@@ -600,37 +628,16 @@ export default function MyTicketsTab() {
           </div>
         </div>
       )}
-      {/* Confirm Modal */}
-      {confirmModal.show && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-md transform overflow-hidden rounded-[2.5rem] border border-[#334155] bg-[#0F172A] p-8 shadow-2xl transition-all text-center sm:text-left">
-            <div className="mx-auto sm:mx-0 flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10 text-amber-500 mb-6">
-              <HiOutlineExclamationTriangle className="h-8 w-8" />
-            </div>
-            <h2 className="text-2xl font-bold text-white">{confirmModal.title}</h2>
-            <p className="mt-4 text-[#94A3B8] leading-relaxed">
-              {confirmModal.message}
-            </p>
-            <div className="mt-8 flex flex-col sm:flex-row justify-end gap-3">
-              <button
-                onClick={() => setConfirmModal({ ...confirmModal, show: false })}
-                className="rounded-2xl border border-[#334155] px-6 py-2.5 text-sm font-bold text-white hover:bg-white/5 transition-all order-2 sm:order-1"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  confirmModal.onConfirm()
-                  setConfirmModal({ ...confirmModal, show: false })
-                }}
-                className="rounded-2xl bg-[#3B82F6] px-8 py-2.5 text-sm font-bold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20 order-1 sm:order-2"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        show={confirmConfig.show}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        onConfirm={() => {
+          confirmConfig.onConfirm()
+          setConfirmConfig({ ...confirmConfig, show: false })
+        }}
+        onCancel={() => setConfirmConfig({ ...confirmConfig, show: false })}
+      />
     </div>
   )
 }

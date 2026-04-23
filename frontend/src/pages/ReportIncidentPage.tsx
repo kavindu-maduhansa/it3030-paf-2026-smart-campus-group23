@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 import { 
   HiOutlineWrenchScrewdriver, 
   HiOutlinePhoto, 
@@ -119,7 +120,7 @@ export default function ReportIncidentPage() {
       setTimeout(() => navigate('/maintenance'), 2000)
     } catch (err) {
       console.error('Failed to create ticket', err)
-      alert('Error submitting report. Please try again.')
+      toast.error('Error submitting report. Please try again.')
     } finally {
       setIsLoading(false)
     }

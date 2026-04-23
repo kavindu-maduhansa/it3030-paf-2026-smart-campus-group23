@@ -105,7 +105,7 @@ const ResourceList = () => {
       setLoading(false)
       return
     }
-    
+
     try {
       console.log('[ResourceList] Loading resources for user:', user?.email, 'role:', user?.role, 'authenticated:', !!user)
       setLoading(true)
@@ -133,7 +133,7 @@ const ResourceList = () => {
 
   const handleFilter = useCallback(async (newFilters: FilterParams) => {
     if (!user) return
-    
+
     try {
       setLoading(true)
       console.log('[ResourceList] Applying filters:', newFilters)
@@ -152,7 +152,7 @@ const ResourceList = () => {
 
   const handleResetFilter = useCallback(async () => {
     if (!user) return
-    
+
     try {
       setLoading(true)
       const response = await getResources()
@@ -170,7 +170,7 @@ const ResourceList = () => {
 
   const handleResourceEvent = useCallback((event: ResourceEvent) => {
     console.log('[ResourceList] WebSocket event received:', event.action, event.resourceId);
-    
+
     if (event.action === 'DELETE') {
       setResources((prev) => prev.filter((r) => r.id !== event.resourceId))
       return
@@ -343,7 +343,7 @@ const ResourceList = () => {
                   const availabilityStatus = getAvailabilityStatus(resource)
                   const badgeStyle = getAvailabilityBadgeStyle(availabilityStatus)
                   const isActive = resource.status === 'ACTIVE'
-                  
+
                   return (
                     <tr
                       key={`${resource.id}-${refreshTime}`}
@@ -363,20 +363,18 @@ const ResourceList = () => {
                           <button
                             disabled={togglingId === resource.id}
                             onClick={() => handleToggleStatus(resource.id)}
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 transition-all ${
-                              isActive
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 transition-all ${isActive
                                 ? 'bg-emerald-500/20 ring-emerald-500/35 text-emerald-300 hover:bg-emerald-500/30'
                                 : 'bg-orange-500/20 ring-orange-500/35 text-orange-300 hover:bg-orange-500/30'
-                            } disabled:opacity-50 cursor-pointer`}
+                              } disabled:opacity-50 cursor-pointer`}
                           >
                             {togglingId === resource.id ? 'Updating...' : isActive ? 'Active' : 'Out of Service'}
                           </button>
                         ) : (
-                          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
-                            isActive
+                          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${isActive
                               ? 'bg-emerald-500/20 ring-emerald-500/35 text-emerald-300'
                               : 'bg-orange-500/20 ring-orange-500/35 text-orange-300'
-                          }`}>
+                            }`}>
                             {isActive ? 'Active' : 'Out of Service'}
                           </span>
                         )}

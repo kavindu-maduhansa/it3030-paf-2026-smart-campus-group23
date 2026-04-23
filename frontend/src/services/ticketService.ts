@@ -41,6 +41,20 @@ export interface TicketResponseDTO {
   updatedAt: string
 }
 
+export interface CommentResponseDTO {
+  id: number
+  ticketId: number
+  userId: number
+  userName: string
+  content: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CommentRequestDTO {
+  content: string
+}
+
 const API_URL = '/api/tickets'
 
 export const createTicket = async (ticket: TicketRequestDTO, images: File[]) => {
@@ -112,3 +126,16 @@ export const unassignTechnician = (id: number) =>
 
 export const deleteTicket = (id: number) =>
   apiClient.delete(`${API_URL}/${id}`)
+
+// Comments API
+export const getTicketComments = (ticketId: number) =>
+  apiClient.get<CommentResponseDTO[]>(`${API_URL}/${ticketId}/comments`)
+
+export const addComment = (ticketId: number, data: CommentRequestDTO) =>
+  apiClient.post<CommentResponseDTO>(`${API_URL}/${ticketId}/comments`, data)
+
+export const updateComment = (commentId: number, data: CommentRequestDTO) =>
+  apiClient.put<CommentResponseDTO>(`/api/comments/${commentId}`, data)
+
+export const deleteComment = (commentId: number) =>
+  apiClient.delete(`/api/comments/${commentId}`)

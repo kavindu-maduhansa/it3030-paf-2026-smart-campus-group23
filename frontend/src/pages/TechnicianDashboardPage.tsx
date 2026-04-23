@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 import {
   HiOutlineBolt,
   HiOutlineClipboardDocumentList,
@@ -28,6 +29,8 @@ import {
 } from '../services/ticketService'
 import { getAllAlerts, type TechnicianAlert } from '../services/alertService'
 import { formatDistanceToNow } from 'date-fns'
+import CommentSection from '../components/CommentSection'
+import ConfirmModal from '../components/ConfirmModal'
 
 
 
@@ -62,6 +65,7 @@ export default function TechnicianDashboardPage() {
     onConfirm: () => void;
     type?: 'danger' | 'warning' | 'info'
   }>({ title: '', message: '', onConfirm: () => { } })
+  const [showCommentPrompt, setShowCommentPrompt] = useState(false)
 
   const firstName = user?.name?.split(' ')[0] ?? 'Technician'
 
@@ -96,6 +100,7 @@ export default function TechnicianDashboardPage() {
     setSelectedFiles([])
     setRemovedAttachmentIds([])
     setIsUpdating(false)
+    setShowCommentPrompt(false)
   }
 
   const handleOpenEdit = (t: TicketResponseDTO) => {
@@ -122,10 +127,20 @@ export default function TechnicianDashboardPage() {
         removedAttachmentIds
       }, selectedFiles)
       fetchMyTickets()
-      handleCloseModal()
+      
+      if (editForm.status === 'CLOSED' || editForm.status === 'RESOLVED') {
+        const updated = tickets.find(t => t.id === selectedTicket.id) || selectedTicket
+        setSelectedTicket({ ...updated, status: editForm.status })
+        setActiveModal('view')
+        setShowCommentPrompt(true)
+        toast.success('Ticket closed and finalized.')
+      } else {
+        handleCloseModal()
+        toast.success('Ticket updated successfully')
+      }
     } catch (err) {
       console.error('Update failed', err)
-      alert('Failed to update ticket.')
+      toast.error('Failed to update ticket.')
     } finally {
       setIsUpdating(false)
     }
@@ -133,7 +148,7 @@ export default function TechnicianDashboardPage() {
 
   const handleRejectTicket = async () => {
     if (!selectedTicket || !rejectionReason.trim()) {
-      alert("Please provide a reason for rejection.")
+      toast.error("Please provide a reason for rejection.")
       return
     }
 
@@ -154,11 +169,13 @@ export default function TechnicianDashboardPage() {
             resolutionNotes: rejectionReason
           })
           await fetchMyTickets()
-          handleCloseModal()
+          setActiveModal('view')
+          setShowCommentPrompt(true)
           setRejectionReason('')
+          toast.success('Ticket rejected.')
         } catch (err) {
           console.error('Failed to reject ticket', err)
-          alert("Could not reject the ticket.")
+          toast.error("Could not reject the ticket.")
         }
       }
     })
@@ -171,9 +188,10 @@ export default function TechnicianDashboardPage() {
       await deleteTicket(selectedTicket.id)
       fetchMyTickets()
       handleCloseModal()
+      toast.success('Ticket deleted')
     } catch (err) {
       console.error('Delete failed', err)
-      alert('Failed to delete ticket.')
+      toast.error('Failed to delete ticket.')
     }
   }
 
@@ -181,9 +199,10 @@ export default function TechnicianDashboardPage() {
     try {
       await selfAssign(ticketId)
       fetchMyTickets()
+      toast.success('Ticket claimed successfully')
     } catch (err) {
       console.error('Self assignment failed', err)
-      alert('Failed to self-assign.')
+      toast.error('Failed to self-assign.')
     }
   }
 
@@ -487,6 +506,15 @@ export default function TechnicianDashboardPage() {
                       </div>
                     </div>
                   )}
+
+                  <div className="mt-8 pt-8 border-t border-[#1F2937]/50">
+                    <CommentSection 
+                  ticketId={selectedTicket.id} 
+                  autoFocus={showCommentPrompt} 
+                  reporterId={selectedTicket.userId}
+                  assigneeId={selectedTicket.assignedToId}
+                />
+                  </div>
                 </div>
                 <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-[#1F2937]/50 p-8">
                   {isAdmin && selectedTicket.status !== 'REJECTED' && (
@@ -610,40 +638,7 @@ export default function TechnicianDashboardPage() {
                 </div>
               </div>
             )}
-            {activeModal === 'confirm' && (
-              <div className="flex flex-col p-12 text-center sm:text-left">
-                <div className={`mx-auto sm:mx-0 flex h-20 w-20 items-center justify-center rounded-full mb-8 ${
-                  confirmConfig.type === 'danger' ? 'bg-rose-500/10 text-rose-500' :
-                  confirmConfig.type === 'warning' ? 'bg-amber-500/10 text-amber-500' :
-                  'bg-blue-500/10 text-blue-500'
-                }`}>
-                  <HiOutlineExclamationTriangle className="h-10 w-10" />
-                </div>
-                <h2 className="text-3xl font-bold text-white">{confirmConfig.title}</h2>
-                <p className="mt-4 text-[#94A3B8] leading-relaxed">
-                  {confirmConfig.message}
-                </p>
 
-                <div className="mt-12 flex flex-col sm:flex-row justify-end gap-4">
-                  <button
-                    onClick={() => setActiveModal('reject')}
-                    className="rounded-2xl border border-[#334155] px-10 py-3.5 text-sm font-bold text-white hover:bg-white/5 transition-all order-2 sm:order-1"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={confirmConfig.onConfirm}
-                    className={`rounded-2xl px-10 py-3.5 text-sm font-bold text-white transition-all shadow-xl order-1 sm:order-2 ${
-                      confirmConfig.type === 'danger' ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-500/20' :
-                      confirmConfig.type === 'warning' ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/20' :
-                      'bg-blue-600 hover:bg-blue-500 shadow-blue-500/20'
-                    }`}
-                  >
-                    Confirm Action
-                  </button>
-                </div>
-              </div>
-            )}
             {activeModal === 'reject' && selectedTicket && (
               <div className="flex flex-col p-12">
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-rose-500/10 text-rose-500 mb-8">
@@ -686,6 +681,18 @@ export default function TechnicianDashboardPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        show={activeModal === 'confirm'}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        variant={confirmConfig.type || 'warning'}
+        onConfirm={() => {
+          confirmConfig.onConfirm()
+          handleCloseModal()
+        }}
+        onCancel={() => setActiveModal('reject')}
+      />
     </DashboardDecor>
   )
 }

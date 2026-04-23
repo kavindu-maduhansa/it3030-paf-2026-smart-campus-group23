@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 import {
   HiOutlineWrenchScrewdriver as WrenchIcon,
   HiOutlinePhoto as PhotoIcon,
@@ -150,9 +151,10 @@ export default function MaintenanceSupportPage() {
       setSelectedResource(null)
       setSelectedUser(null)
       setUserSearchQuery('')
+      toast.success('Incident reported successfully')
     } catch (err) {
       console.error('Failed to create ticket', err)
-      alert('Error submitting report. Please try again.')
+      toast.error('Error submitting report. Please try again.')
     } finally {
       setIsLoading(false)
     }
