@@ -26,7 +26,7 @@ export function getOAuthBaseUrl(): string {
     return String(direct).replace(/\/$/, '')
   }
   // Fallback: use the backend port directly (OAuth cannot go through the Vite proxy)
-  return import.meta.env.DEV ? 'http://localhost:8080' : ''
+  return import.meta.env.DEV ? 'http://localhost:8081' : ''
 }
 
 export function getWebSocketResourcesUrl(): string {
