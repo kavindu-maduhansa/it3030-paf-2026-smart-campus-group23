@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
@@ -21,6 +22,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
      * Find bookings by user
      */
     List<Booking> findByUserId(Long userId);
+    Optional<Booking> findByIdAndUserId(Long id, Long userId);
 
     /**
      * Find bookings by status
@@ -40,6 +42,44 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
      * Find bookings by resource and date
      */
     List<Booking> findByResourceIdAndBookingDate(Long resourceId, LocalDate bookingDate);
+
+    /**
+     * Checks if there is an overlapping active booking for the same resource/date.
+     */
+    @Query("""
+            SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END
+            FROM Booking b
+            WHERE b.resource.id = :resourceId
+              AND b.bookingDate = :bookingDate
+              AND b.status IN ('PENDING', 'APPROVED')
+              AND b.startTime < :endTime
+              AND b.endTime > :startTime
+            """)
+    boolean existsOverlappingBooking(
+            @Param("resourceId") Long resourceId,
+            @Param("bookingDate") LocalDate bookingDate,
+            @Param("startTime") java.time.LocalTime startTime,
+            @Param("endTime") java.time.LocalTime endTime);
+
+    /**
+     * Checks overlap for update flow while excluding current booking id.
+     */
+    @Query("""
+            SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END
+            FROM Booking b
+            WHERE b.resource.id = :resourceId
+              AND b.bookingDate = :bookingDate
+              AND b.status IN ('PENDING', 'APPROVED')
+              AND b.id <> :bookingId
+              AND b.startTime < :endTime
+              AND b.endTime > :startTime
+            """)
+    boolean existsOverlappingBookingExcludingId(
+            @Param("bookingId") Long bookingId,
+            @Param("resourceId") Long resourceId,
+            @Param("bookingDate") LocalDate bookingDate,
+            @Param("startTime") java.time.LocalTime startTime,
+            @Param("endTime") java.time.LocalTime endTime);
 
     /**
      * Top resources by booking count (all time)
