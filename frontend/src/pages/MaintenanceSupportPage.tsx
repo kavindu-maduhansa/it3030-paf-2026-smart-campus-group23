@@ -36,7 +36,7 @@ export default function MaintenanceSupportPage() {
     title: '',
     description: '',
     category: '',
-    priority: 'MEDIUM',
+    priority: 'LOW',
     contactDetails: '',
     resourceId: undefined
   })
@@ -144,7 +144,7 @@ export default function MaintenanceSupportPage() {
       // Reset form
       setFormData({
         title: '', description: '', category: '',
-        priority: 'MEDIUM', contactDetails: '', resourceId: undefined
+        priority: 'LOW', contactDetails: '', resourceId: undefined
       })
       setImages([])
       setPreviews([])
@@ -314,6 +314,29 @@ export default function MaintenanceSupportPage() {
                         className="h-11 w-full rounded-xl border border-[#1F2937] bg-[#0F172A] pl-10 pr-4 text-white placeholder:text-[#475569] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]"
                       />
                     </div>
+                  </div>
+                  
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-semibold text-white">Priority Level</label>
+                    <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      {['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, priority: p })}
+                          className={`rounded-xl border py-2.5 text-xs font-bold transition-all ${
+                            formData.priority === p
+                              ? 'border-[#3B82F6] bg-[#3B82F6]/10 text-white ring-1 ring-[#3B82F6]'
+                              : 'border-[#1F2937] bg-[#0F172A] text-[#64748B] hover:border-[#3B82F6]/30'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-[10px] text-[#64748B]">
+                      SLA: Low (48h), Med (24h), High (8h), Urgent (4h)
+                    </p>
                   </div>
                 </div>
               </div>

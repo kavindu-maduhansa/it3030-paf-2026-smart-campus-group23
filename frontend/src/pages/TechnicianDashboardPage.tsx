@@ -69,6 +69,18 @@ export default function TechnicianDashboardPage() {
 
   const firstName = user?.name?.split(' ')[0] ?? 'Technician'
 
+  // SLA Analytics Calculations
+  const resolvedTickets = tickets.filter(t => t.resolvedAt);
+  const metSlaCount = resolvedTickets.filter(t => {
+    const start = new Date(t.createdAt).getTime();
+    const end = new Date(t.resolvedAt!).getTime();
+    return (end - start) <= (t.slaLimit! * 60 * 60 * 1000);
+  }).length;
+  
+  const complianceRate = resolvedTickets.length > 0 
+    ? Math.round((metSlaCount / resolvedTickets.length) * 100) 
+    : 100;
+
   useEffect(() => {
     fetchMyTickets()
     fetchAlerts()
@@ -76,10 +88,12 @@ export default function TechnicianDashboardPage() {
 
   const fetchMyTickets = async () => {
     try {
-      const response = await getAssignedTickets()
+      // If admin, fetch all tickets for global SLA analytics
+      // If technician, fetch only assigned tickets
+      const response = isAdmin ? await getAllTickets() : await getAssignedTickets()
       setTickets(response.data)
     } catch (error) {
-      console.error('Failed to fetch assigned tickets:', error)
+      console.error('Failed to fetch tickets:', error)
     } finally {
       setIsLoading(false)
     }
@@ -272,6 +286,45 @@ export default function TechnicianDashboardPage() {
           </Link>
         </div>
 
+        {/* Simple SLA Analytics Row */}
+        <div className="mt-8">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className={`${tilePanel} border-blue-500/20 bg-blue-500/5`}>
+              <div className="flex items-center gap-2">
+                <HiOutlineClock className="h-4 w-4 text-[#3B82F6]" />
+                <p className="text-xs font-bold uppercase tracking-widest text-[#64748B]">SLA Compliance</p>
+              </div>
+              <p className="mt-2 text-3xl font-black text-white">{complianceRate}%</p>
+              <p className="mt-1 text-[10px] text-[#475569]">Overall performance rate</p>
+            </div>
+
+            <div className={`${tilePanel} border-emerald-500/20 bg-emerald-500/5`}>
+              <p className="text-xs font-bold uppercase tracking-widest text-[#64748B]">On Time</p>
+              <p className="mt-2 text-3xl font-black text-emerald-500">{metSlaCount}</p>
+              <p className="mt-1 text-[10px] text-[#475569]">Tickets resolved within SLA</p>
+            </div>
+
+            <div className={`${tilePanel} border-rose-500/20 bg-rose-500/5`}>
+              <p className="text-xs font-bold uppercase tracking-widest text-[#64748B]">Breached</p>
+              <p className="mt-2 text-3xl font-black text-rose-500">{resolvedTickets.length - metSlaCount}</p>
+              <p className="mt-1 text-[10px] text-[#475569]">Tickets that exceeded limits</p>
+            </div>
+
+            <div className={`${tilePanel} border-amber-500/20 bg-amber-500/5`}>
+              <p className="text-xs font-bold uppercase tracking-widest text-[#64748B]">Active Warning</p>
+              <p className="mt-2 text-3xl font-black text-amber-500">
+                {tickets.filter(t => {
+                  if (t.status === 'RESOLVED' || t.status === 'CLOSED' || !t.slaLimit) return false
+                  const used = Date.now() - new Date(t.createdAt).getTime()
+                  const total = t.slaLimit * 60 * 60 * 1000
+                  return used > (total * 0.75) && used <= total
+                }).length}
+              </p>
+              <p className="mt-1 text-[10px] text-[#475569]">Tickets nearing breach (75%+)</p>
+            </div>
+          </div>
+        </div>
+
       </section>
 
       {/* Main Content Grid */}
@@ -384,7 +437,7 @@ export default function TechnicianDashboardPage() {
 
         </div>
 
-        {/* Right Column */}
+        {/* Right Column: Alerts */}
         <div className="space-y-6">
           <div className={`${tilePanel} border-slate-700 bg-slate-900/50`}>
             <h3 className="flex items-center gap-2 text-sm font-bold text-white">
@@ -417,10 +470,9 @@ export default function TechnicianDashboardPage() {
               )}
             </div>
           </div>
-
-
         </div>
       </div>
+
 
       {/* MODALS */}
       {activeModal && selectedTicket && (

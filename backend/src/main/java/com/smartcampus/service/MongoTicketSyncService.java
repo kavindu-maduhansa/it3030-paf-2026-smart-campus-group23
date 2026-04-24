@@ -44,6 +44,8 @@ public class MongoTicketSyncService {
                     .set("resolutionNotes", ticket.getResolutionNotes())
                     .set("contactDetails", ticket.getContactDetails())
                     .set("resolvedAt", ticket.getResolvedAt() != null ? ticket.getResolvedAt().toString() : null)
+                    .set("firstReplyAt", ticket.getFirstReplyAt() != null ? ticket.getFirstReplyAt().toString() : null)
+                    .set("slaLimit", ticket.getSlaLimit())
                     .set("closedAt", ticket.getClosedAt() != null ? ticket.getClosedAt().toString() : null)
                     .set("createdAt", ticket.getCreatedAt() != null ? ticket.getCreatedAt().toString() : null)
                     .set("updatedAt", ticket.getUpdatedAt() != null ? ticket.getUpdatedAt().toString() : null);

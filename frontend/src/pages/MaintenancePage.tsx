@@ -38,6 +38,7 @@ import {
 import { formatDistanceToNow } from 'date-fns'
 import CommentSection from '../components/CommentSection'
 import ConfirmModal from '../components/ConfirmModal'
+import SlaIndicator from '../components/SlaIndicator'
 
 
 
@@ -394,7 +395,7 @@ export default function MaintenancePage() {
           </div>
         </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-4">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <div className={tilePanel}>
             <p className="text-xs font-semibold uppercase text-[#94A3B8]">Total Tickets</p>
             <p className="mt-2 text-2xl font-bold text-white">{tickets.length}</p>
@@ -414,7 +415,18 @@ export default function MaintenancePage() {
           <div className={tilePanel}>
             <p className="text-xs font-semibold uppercase text-[#94A3B8]">Resolved</p>
             <p className="mt-2 text-2xl font-bold text-emerald-400">
-              {tickets.filter(t => t.status === 'RESOLVED').length}
+              {tickets.filter(t => t.status === 'RESOLVED' || t.status === 'CLOSED').length}
+            </p>
+          </div>
+          <div className={tilePanel}>
+            <p className="text-xs font-semibold uppercase text-[#94A3B8]">SLA Breached</p>
+            <p className="mt-2 text-2xl font-bold text-rose-500">
+              {tickets.filter(t => {
+                if (!t.slaLimit) return false
+                const start = new Date(t.createdAt).getTime()
+                const end = t.resolvedAt ? new Date(t.resolvedAt).getTime() : Date.now()
+                return (end - start) > (t.slaLimit * 60 * 60 * 1000)
+              }).length}
             </p>
           </div>
         </div>
@@ -451,6 +463,14 @@ export default function MaintenancePage() {
                           }`}>
                           {t.status.replace('_', ' ')}
                         </p>
+                        {t.slaLimit && (
+                          <SlaIndicator 
+                            createdAt={t.createdAt} 
+                            slaLimit={t.slaLimit} 
+                            resolvedAt={t.resolvedAt} 
+                            isAgentView={true} 
+                          />
+                        )}
                       </div>
                       <h3 className="mt-1 text-lg font-semibold text-white">{t.title}</h3>
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#94A3B8]">
@@ -649,6 +669,24 @@ export default function MaintenancePage() {
                             selectedTicket.priority.toLowerCase() === 'medium' ? 'text-amber-400' : 'text-emerald-400'
                           }`}>{selectedTicket.priority.toUpperCase()}</p>
                       </div>
+                      {selectedTicket.slaLimit && (
+                        <div className={`${tilePanel} sm:col-span-2`}>
+                          <span className="text-xs font-semibold uppercase text-[#64748B]">SLA Status</span>
+                          <div className="mt-2">
+                            <SlaIndicator 
+                              createdAt={selectedTicket.createdAt} 
+                              slaLimit={selectedTicket.slaLimit} 
+                              resolvedAt={selectedTicket.resolvedAt} 
+                              isAgentView={true} 
+                            />
+                            {selectedTicket.firstReplyAt && (
+                              <p className="mt-2 text-[10px] text-[#94A3B8]">
+                                First reply recorded at {new Date(selectedTicket.firstReplyAt).toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div>

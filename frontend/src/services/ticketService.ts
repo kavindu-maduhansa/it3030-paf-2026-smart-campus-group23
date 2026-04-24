@@ -37,6 +37,9 @@ export interface TicketResponseDTO {
   imageUrls: string[]
   attachments?: AttachmentDTO[]
   resolutionNotes?: string
+  resolvedAt?: string
+  firstReplyAt?: string
+  slaLimit?: number
   createdAt: string
   updatedAt: string
 }
