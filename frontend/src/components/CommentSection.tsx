@@ -8,7 +8,7 @@ import ConfirmModal from './ConfirmModal'
 import { getTicketComments, addComment, updateComment, deleteComment } from '../services/ticketService'
 import type { CommentResponseDTO } from '../services/ticketService'
 import { useAuth } from '../services/useAuth'
-import { toast } from 'react-hot-toast'
+import { toast } from '../services/toast'
 
 interface CommentSectionProps {
   ticketId: number

@@ -64,7 +64,7 @@ const Register = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#0F172A] to-[#1E293B]">
+      <div className="ui-auth-shell">
         <div className="text-center">
           <div
             className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-[#1F2937] border-t-[#3B82F6]"
@@ -77,8 +77,8 @@ const Register = () => {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#0F172A] to-[#1E293B] p-4">
-      <div className="w-full max-w-md rounded-3xl border border-[#1F2937] bg-[#111827] p-10 shadow-2xl shadow-black/50">
+    <div className="ui-auth-shell">
+      <div className="ui-auth-card">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3B82F6] to-[#2563EB] shadow-lg shadow-[#3B82F6]/30">
             <svg
@@ -104,13 +104,13 @@ const Register = () => {
         {/* Registration Form */}
         <form onSubmit={handleSubmit} className="mb-6 space-y-4">
           {errors.general && (
-            <div className="rounded-lg bg-[#EF4444]/10 border border-[#EF4444]/30 p-3 text-sm text-[#F87171]">
+            <div className="ui-alert-error">
               {errors.general}
             </div>
           )}
 
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-[#CBD5E1] mb-2">
+            <label htmlFor="name" className="ui-auth-label">
               Full Name
             </label>
             <input
@@ -120,16 +120,14 @@ const Register = () => {
               value={formData.name}
               onChange={handleChange}
               required
-              className={`w-full rounded-lg border ${
-                errors.name ? 'border-[#EF4444]' : 'border-[#1F2937]'
-              } bg-[#0F172A] px-4 py-3 text-white placeholder-[#64748B] focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/50`}
+              className={`ui-input px-4 py-3 ${errors.name ? 'border-[#EF4444] focus:border-[#EF4444]' : ''}`}
               placeholder="John Doe"
             />
             {errors.name && <p className="mt-1 text-sm text-[#F87171]">{errors.name}</p>}
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-[#CBD5E1] mb-2">
+            <label htmlFor="email" className="ui-auth-label">
               Email
             </label>
             <input
@@ -139,16 +137,14 @@ const Register = () => {
               value={formData.email}
               onChange={handleChange}
               required
-              className={`w-full rounded-lg border ${
-                errors.email ? 'border-[#EF4444]' : 'border-[#1F2937]'
-              } bg-[#0F172A] px-4 py-3 text-white placeholder-[#64748B] focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/50`}
+              className={`ui-input px-4 py-3 ${errors.email ? 'border-[#EF4444] focus:border-[#EF4444]' : ''}`}
               placeholder="you@example.com"
             />
             {errors.email && <p className="mt-1 text-sm text-[#F87171]">{errors.email}</p>}
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-[#CBD5E1] mb-2">
+            <label htmlFor="password" className="ui-auth-label">
               Password
             </label>
             <input
@@ -158,9 +154,7 @@ const Register = () => {
               value={formData.password}
               onChange={handleChange}
               required
-              className={`w-full rounded-lg border ${
-                errors.password ? 'border-[#EF4444]' : 'border-[#1F2937]'
-              } bg-[#0F172A] px-4 py-3 text-white placeholder-[#64748B] focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/50`}
+              className={`ui-input px-4 py-3 ${errors.password ? 'border-[#EF4444] focus:border-[#EF4444]' : ''}`}
               placeholder="••••••••"
             />
             {errors.password && <p className="mt-1 text-sm text-[#F87171]">{errors.password}</p>}
@@ -169,7 +163,7 @@ const Register = () => {
           <div>
             <label
               htmlFor="confirmPassword"
-              className="block text-sm font-medium text-[#CBD5E1] mb-2"
+              className="ui-auth-label"
             >
               Confirm Password
             </label>
@@ -180,9 +174,7 @@ const Register = () => {
               value={formData.confirmPassword}
               onChange={handleChange}
               required
-              className={`w-full rounded-lg border ${
-                errors.confirmPassword ? 'border-[#EF4444]' : 'border-[#1F2937]'
-              } bg-[#0F172A] px-4 py-3 text-white placeholder-[#64748B] focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/50`}
+              className={`ui-input px-4 py-3 ${errors.confirmPassword ? 'border-[#EF4444] focus:border-[#EF4444]' : ''}`}
               placeholder="••••••••"
             />
             {errors.confirmPassword && (
@@ -193,7 +185,7 @@ const Register = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full rounded-xl bg-[#3B82F6] px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-[#3B82F6]/30 transition-all hover:bg-[#2563EB] hover:shadow-xl hover:shadow-[#3B82F6]/40 focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:ring-offset-2 focus:ring-offset-[#111827] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="ui-button-primary w-full rounded-xl px-6 py-3.5 text-base"
           >
             {isLoading ? 'Creating account...' : 'Create account'}
           </button>

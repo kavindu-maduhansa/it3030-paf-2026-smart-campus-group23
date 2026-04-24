@@ -31,17 +31,31 @@ function App() {
       <Toaster 
         position="top-right"
         toastOptions={{
-          duration: 4000,
+          duration: 3500,
           style: {
-            background: '#1F2937',
-            color: '#fff',
-            border: '1px solid #374151',
+            background: '#111827',
+            color: '#F8FAFC',
+            border: '1px solid #334155',
             borderRadius: '12px',
           },
           success: {
+            style: {
+              border: '1px solid rgba(16, 185, 129, 0.35)',
+              background: 'rgba(16, 185, 129, 0.1)',
+            },
             iconTheme: {
               primary: '#10B981',
-              secondary: '#fff',
+              secondary: '#0F172A',
+            },
+          },
+          error: {
+            style: {
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              background: 'rgba(239, 68, 68, 0.12)',
+            },
+            iconTheme: {
+              primary: '#EF4444',
+              secondary: '#0F172A',
             },
           },
         }}

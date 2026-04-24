@@ -32,7 +32,7 @@ public class SmartCampusBackendApplication {
 		}
 		String envPort = System.getenv("PORT");
 		String propPort = System.getProperty("PORT");
-		String effective = firstNonBlank(envPort, propPort, "8081");
+		String effective = firstNonBlank(envPort, propPort, "8080");
 		int effectivePort;
 		try {
 			effectivePort = Integer.parseInt(effective);

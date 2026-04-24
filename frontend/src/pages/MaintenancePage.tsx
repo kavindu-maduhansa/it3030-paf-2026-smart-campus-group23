@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { toast } from 'react-hot-toast'
+import { toast } from '../services/toast'
 import {
   HiOutlineEye,
   HiOutlinePencilSquare,
@@ -24,7 +24,8 @@ const CATEGORIES = [
   'Electrical', 'Plumbing', 'IT & Network', 'AV & Projector',
   'HVAC / Air Con', 'Furniture', 'Janitorial', 'Other'
 ]
-import { Pill, SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
+import { Pill, panelLg, tilePanel } from './dashboard/dashboardUi'
+import PageHeader from '../components/PageHeader'
 import {
   getAllTickets,
   updateTicketStatus,
@@ -139,8 +140,8 @@ export default function MaintenancePage() {
 
   const showAlert = (title: string, message: string, type: 'error' | 'warning' | 'info' = 'info') => {
     if (type === 'error') toast.error(`${title}: ${message}`)
-    else if (type === 'warning') toast(message, { icon: '⚠️' })
-    else toast.success(message)
+    else if (type === 'warning') toast.warning(`${title}: ${message}`)
+    else toast.info(`${title}: ${message}`)
   }
 
   const handleOpenModal = async (type: 'view' | 'edit' | 'delete' | 'assign', ticket: TicketResponseDTO) => {
@@ -311,7 +312,7 @@ export default function MaintenancePage() {
   return (
     <div className="relative -mx-4 sm:-mx-6 lg:-mx-8">
       <div className="px-4 sm:px-6 lg:px-8">
-        <SectionHeader
+        <PageHeader
           eyebrow="Operations"
           title="Maintenance & tickets"
           subtitle="Browse and manage all the maintenance tickets."

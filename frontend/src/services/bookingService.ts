@@ -29,14 +29,34 @@ export interface BookingResponse {
   createdAt: string
 }
 
+export interface BookingAdminFilters {
+  status?: string
+  startDate?: string
+  endDate?: string
+  resourceId?: number
+  userId?: number
+}
+
 export const createBooking = (payload: BookingCreateRequest) =>
   apiClient.post<BookingResponse>(API_URL, payload)
 
 export const getMyBookings = () =>
   apiClient.get<BookingResponse[]>(`${API_URL}/my`)
 
-export const getAllBookings = () =>
-  apiClient.get<BookingResponse[]>(API_URL)
+export const getAllBookings = (filters?: BookingAdminFilters) => {
+  const params = new URLSearchParams()
+  if (filters?.status) params.append('status', filters.status)
+  if (filters?.startDate) params.append('startDate', filters.startDate)
+  if (filters?.endDate) params.append('endDate', filters.endDate)
+  if (typeof filters?.resourceId === 'number' && Number.isFinite(filters.resourceId)) {
+    params.append('resourceId', String(filters.resourceId))
+  }
+  if (typeof filters?.userId === 'number' && Number.isFinite(filters.userId)) {
+    params.append('userId', String(filters.userId))
+  }
+  const query = params.toString()
+  return apiClient.get<BookingResponse[]>(query ? `${API_URL}?${query}` : API_URL)
+}
 
 export const updateBooking = (id: number, payload: BookingCreateRequest) =>
   apiClient.put<BookingResponse>(`${API_URL}/${id}`, payload)

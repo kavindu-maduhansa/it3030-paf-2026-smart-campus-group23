@@ -155,15 +155,11 @@ public class ResourceController {
     @GetMapping("/filter")
     public ResponseEntity<List<Resource>> filterResources(
             @RequestParam(required = false) String type,
-            @RequestParam(required = false) String location) {
-        
-        if (type != null && location != null) {
-            List<Resource> resources = resourceService.filterResources(type, location);
-            return ResponseEntity.ok(resources);
-        }
-        
-        // Return all if no filters provided
-        return ResponseEntity.ok(resourceService.getAllResources());
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Integer capacity) {
+        List<Resource> resources = resourceService.filterResources(type, location, status, capacity);
+        return ResponseEntity.ok(resources);
     }
 
     /**

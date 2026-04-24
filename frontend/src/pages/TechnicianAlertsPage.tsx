@@ -13,7 +13,7 @@ import {
 import { SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
 import { getAllAlerts, createAlert, updateAlert, deleteAlert, type TechnicianAlert } from '../services/alertService'
 import { formatDistanceToNow } from 'date-fns'
-import { toast } from 'react-hot-toast'
+import { toast } from '../services/toast'
 import ConfirmModal from '../components/ConfirmModal'
 
 export default function TechnicianAlertsPage() {

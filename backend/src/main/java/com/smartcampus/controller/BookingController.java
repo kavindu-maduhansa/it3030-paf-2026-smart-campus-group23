@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -40,8 +41,22 @@ public class BookingController {
     private final UserRepository userRepository;
 
     @GetMapping
-    public ResponseEntity<List<BookingListItemDTO>> getBookings() {
-        return ResponseEntity.ok(bookingService.listAllBookings());
+    public ResponseEntity<?> getBookings(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) Long resourceId,
+            @RequestParam(required = false) Long userId) {
+        try {
+            boolean hasFilters = status != null || startDate != null || endDate != null || resourceId != null || userId != null;
+            if (!hasFilters) {
+                return ResponseEntity.ok(bookingService.listAllBookings());
+            }
+            return ResponseEntity.ok(
+                    bookingService.listAllBookingsFiltered(status, startDate, endDate, resourceId, userId));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
     }
 
     @PatchMapping("/{id}/approve")
