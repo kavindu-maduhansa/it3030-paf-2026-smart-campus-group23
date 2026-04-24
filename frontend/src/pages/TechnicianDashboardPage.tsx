@@ -77,9 +77,9 @@ export default function TechnicianDashboardPage() {
     const end = new Date(t.resolvedAt!).getTime();
     return (end - start) <= (t.slaLimit! * 60 * 60 * 1000);
   }).length;
-  
-  const complianceRate = resolvedTickets.length > 0 
-    ? Math.round((metSlaCount / resolvedTickets.length) * 100) 
+
+  const complianceRate = resolvedTickets.length > 0
+    ? Math.round((metSlaCount / resolvedTickets.length) * 100)
     : 100;
 
   useEffect(() => {
