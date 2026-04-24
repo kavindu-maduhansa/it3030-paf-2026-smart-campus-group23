@@ -46,6 +46,14 @@ public class CommentService {
         comment.setContent(dto.getContent());
 
         Comment savedComment = commentRepository.save(comment);
+
+        // Rule A: Update first_reply_at if it's the first response from a technician/admin
+        if (ticket.getFirstReplyAt() == null && (user.getRole() == com.smartcampus.security.Role.TECHNICIAN || user.getRole() == com.smartcampus.security.Role.ADMIN)) {
+            ticket.setFirstReplyAt(java.time.LocalDateTime.now());
+            ticketRepository.save(ticket);
+            log.info("SLA Trigger: first_reply_at set for ticket {}", ticketId);
+        }
+
         log.info("New comment added to ticket {} by user {}", ticketId, user.getEmail());
         return convertToResponseDTO(savedComment);
     }

@@ -30,6 +30,8 @@ public class TicketResponseDTO {
     private String assignedToName;
     private String resolutionNotes;
     private LocalDateTime resolvedAt;
+    private LocalDateTime firstReplyAt;
+    private Integer slaLimit;
     private LocalDateTime closedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

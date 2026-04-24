@@ -61,6 +61,12 @@ public class Ticket {
     @Column(name = "resolved_at")
     private LocalDateTime resolvedAt;
 
+    @Column(name = "first_reply_at")
+    private LocalDateTime firstReplyAt;
+
+    @Column(name = "sla_limit")
+    private Integer slaLimit;
+
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 

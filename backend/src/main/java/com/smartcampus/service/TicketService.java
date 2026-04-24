@@ -36,6 +36,45 @@ public class TicketService {
     private final UserRepository userRepository;
     private final MongoTicketSyncService mongoTicketSyncService;
     private final NotificationService notificationService;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    @jakarta.annotation.PostConstruct
+    public void ensureColumns() {
+        try {
+            log.info("Ensuring SLA columns exist in tickets table...");
+            addColumnIfNotExists("first_reply_at", "DATETIME NULL");
+            addColumnIfNotExists("sla_limit", "INT NULL");
+            
+            // Set default SLA for existing tickets
+            int updatedRows = jdbcTemplate.update("UPDATE tickets SET sla_limit = 24 WHERE sla_limit IS NULL");
+            if (updatedRows > 0) {
+                log.info("Initialized SLA limit for {} existing tickets.", updatedRows);
+            }
+
+            // Initialize resolved_at for existing closed/resolved tickets so they don't look breached
+            int updatedResolved = jdbcTemplate.update("UPDATE tickets SET resolved_at = updated_at WHERE status IN ('CLOSED', 'RESOLVED', 'REJECTED') AND resolved_at IS NULL");
+            if (updatedResolved > 0) {
+                log.info("Initialized resolved_at for {} existing completed tickets.", updatedResolved);
+            }
+            
+            log.info("SLA columns checked/added successfully.");
+        } catch (Exception e) {
+            log.warn("Manual column check failed: {}", e.getMessage());
+        }
+    }
+
+    private void addColumnIfNotExists(String columnName, String definition) {
+        try {
+            String checkSql = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tickets' AND COLUMN_NAME = ?";
+            Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, columnName);
+            if (count != null && count == 0) {
+                log.info("Adding missing column: {}", columnName);
+                jdbcTemplate.execute("ALTER TABLE tickets ADD COLUMN " + columnName + " " + definition);
+            }
+        } catch (Exception e) {
+            log.warn("Error checking/adding column {}: {}", columnName, e.getMessage());
+        }
+    }
 
     @Transactional
     public TicketResponseDTO createTicket(TicketRequestDTO dto, User user, org.springframework.web.multipart.MultipartFile[] images) {
@@ -81,6 +120,15 @@ public class TicketService {
         ticket.setStatus(TicketStatus.OPEN);
         ticket.setResource(resource);
         ticket.setUser(ticketOwner);
+
+        // Set SLA limit based on priority
+        int slaHours = switch (priority) {
+            case URGENT -> 4;
+            case HIGH -> 8;
+            case MEDIUM -> 24;
+            case LOW -> 48;
+        };
+        ticket.setSlaLimit(slaHours);
         
         if (resource != null) {
             ticket.setLocation(resource.getLocation());
@@ -224,6 +272,10 @@ public class TicketService {
             ticket.setResolvedAt(LocalDateTime.now());
         } else if (status == TicketStatus.CLOSED && oldStatus != TicketStatus.CLOSED) {
             ticket.setClosedAt(LocalDateTime.now());
+            // User requirement: When ticket moves to Closed -> update resolved_at
+            if (ticket.getResolvedAt() == null) {
+                ticket.setResolvedAt(LocalDateTime.now());
+            }
         }
 
         Ticket updatedTicket = ticketRepository.save(ticket);
@@ -430,6 +482,8 @@ public class TicketService {
                 .assignedToName(ticket.getAssignedTo() != null ? ticket.getAssignedTo().getName() : null)
                 .resolutionNotes(ticket.getResolutionNotes())
                 .resolvedAt(ticket.getResolvedAt())
+                .firstReplyAt(ticket.getFirstReplyAt())
+                .slaLimit(ticket.getSlaLimit())
                 .closedAt(ticket.getClosedAt())
                 .createdAt(ticket.getCreatedAt())
                 .updatedAt(ticket.getUpdatedAt())
