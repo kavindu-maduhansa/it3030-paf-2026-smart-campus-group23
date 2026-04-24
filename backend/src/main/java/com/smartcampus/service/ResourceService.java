@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 
 /**
  * MODULE A: Resource Service
@@ -68,6 +69,31 @@ public class ResourceService {
      */
     public List<Resource> filterResources(String type, String location) {
         return resourceRepository.findByTypeAndLocation(type, location);
+    }
+
+    /**
+     * Advanced filtering: optional type, location, and status.
+     * Supports partial/case-insensitive location matching.
+     */
+    public List<Resource> filterResources(String type, String location, String status, Integer capacity) {
+        final String normalizedType = type != null ? type.trim().toUpperCase(Locale.ROOT) : "";
+        final String normalizedLocation = location != null ? location.trim().toLowerCase(Locale.ROOT) : "";
+        final String normalizedStatus = status != null ? status.trim().toUpperCase(Locale.ROOT) : "";
+        final Integer minCapacity = capacity != null && capacity > 0 ? capacity : null;
+
+        return resourceRepository.findAll().stream()
+                .filter(resource -> normalizedType.isEmpty()
+                        || (resource.getType() != null
+                        && resource.getType().trim().toUpperCase(Locale.ROOT).equals(normalizedType)))
+                .filter(resource -> normalizedLocation.isEmpty()
+                        || (resource.getLocation() != null
+                        && resource.getLocation().toLowerCase(Locale.ROOT).contains(normalizedLocation)))
+                .filter(resource -> normalizedStatus.isEmpty()
+                        || (resource.getStatus() != null
+                        && resource.getStatus().name().equals(normalizedStatus)))
+                .filter(resource -> minCapacity == null
+                        || (resource.getCapacity() != null && resource.getCapacity() >= minCapacity))
+                .toList();
     }
 
     /**

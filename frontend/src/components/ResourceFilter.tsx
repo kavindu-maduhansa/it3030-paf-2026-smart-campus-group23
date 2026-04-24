@@ -16,6 +16,8 @@ const RESOURCE_TYPES = [
 export default function ResourceFilter({ onFilter, onReset }: ResourceFilterProps) {
   const [type, setType] = useState('')
   const [location, setLocation] = useState('')
+  const [status, setStatus] = useState('')
+  const [capacity, setCapacity] = useState('')
 
   const handleFilter = (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,6 +25,13 @@ export default function ResourceFilter({ onFilter, onReset }: ResourceFilterProp
     
     if (type) filters.type = type
     if (location) filters.location = location
+    if (status) filters.status = status
+    if (capacity.trim() !== '') {
+      const parsed = Number(capacity)
+      if (Number.isFinite(parsed) && parsed > 0) {
+        filters.capacity = parsed
+      }
+    }
     
     onFilter(filters)
   }
@@ -30,10 +39,12 @@ export default function ResourceFilter({ onFilter, onReset }: ResourceFilterProp
   const handleReset = () => {
     setType('')
     setLocation('')
+    setStatus('')
+    setCapacity('')
     onReset()
   }
 
-  const hasActiveFilters = type || location
+  const hasActiveFilters = type || location || status || capacity
 
   return (
     <form onSubmit={handleFilter} className="mb-6 rounded-2xl border border-[#1F2937] bg-[#111827] p-5 shadow-lg shadow-black/30">
@@ -42,7 +53,7 @@ export default function ResourceFilter({ onFilter, onReset }: ResourceFilterProp
           Filter Resources
         </h3>
         
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* Type Dropdown */}
           <div className="flex flex-col gap-2">
             <label htmlFor="type" className="text-xs font-medium text-[#CBD5E1]">
@@ -74,6 +85,39 @@ export default function ResourceFilter({ onFilter, onReset }: ResourceFilterProp
               placeholder="e.g., A, B, Building 3"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
+              className="rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-2 text-sm text-[#E2E8F0] placeholder-[#64748B] transition-colors focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30"
+            />
+          </div>
+
+          {/* Status Dropdown */}
+          <div className="flex flex-col gap-2">
+            <label htmlFor="status" className="text-xs font-medium text-[#CBD5E1]">
+              Status
+            </label>
+            <select
+              id="status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-2 text-sm text-[#E2E8F0] transition-colors focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30"
+            >
+              <option value="">All Statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="OUT_OF_SERVICE">Out of Service</option>
+            </select>
+          </div>
+
+          {/* Minimum Capacity */}
+          <div className="flex flex-col gap-2">
+            <label htmlFor="capacity" className="text-xs font-medium text-[#CBD5E1]">
+              Min Capacity
+            </label>
+            <input
+              id="capacity"
+              type="number"
+              min="1"
+              placeholder="e.g., 30"
+              value={capacity}
+              onChange={(e) => setCapacity(e.target.value)}
               className="rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-2 text-sm text-[#E2E8F0] placeholder-[#64748B] transition-colors focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30"
             />
           </div>
