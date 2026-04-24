@@ -27,6 +27,7 @@ export interface FilterParams {
   type?: string
   location?: string
   status?: string
+  capacity?: number
 }
 
 export const filterResources = (params: FilterParams) => {
@@ -34,6 +35,9 @@ export const filterResources = (params: FilterParams) => {
   if (params.type) queryParams.append('type', params.type)
   if (params.location) queryParams.append('location', params.location)
   if (params.status) queryParams.append('status', params.status)
+  if (typeof params.capacity === 'number' && Number.isFinite(params.capacity) && params.capacity > 0) {
+    queryParams.append('capacity', String(params.capacity))
+  }
   
   return apiClient.get<Resource[]>(`${API_URL}/filter?${queryParams.toString()}`)
 }

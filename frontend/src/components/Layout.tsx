@@ -15,8 +15,8 @@ const navLinkBase =
 
 function navLinkClass(isActive: boolean) {
   return isActive
-    ? `${navLinkBase} bg-[#1F2937] font-semibold text-white`
-    : `${navLinkBase} text-[#9CA3AF] hover:bg-white/5 hover:text-white`
+    ? `${navLinkBase} bg-[var(--color-bg-surface-soft)] font-semibold text-[var(--color-text-primary)]`
+    : `${navLinkBase} text-[var(--color-text-muted)] hover:bg-white/5 hover:text-[var(--color-text-primary)]`
 }
 
 const ROLES_HIDE_FACILITIES_BOOKINGS = new Set(['STUDENT', 'LECTURER', 'TECHNICIAN'])
@@ -35,8 +35,8 @@ export default function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#020617] font-sans antialiased">
-      <header className="sticky top-0 z-50 border-b border-[#1F2937] bg-[#020617]/95 shadow-lg shadow-black/40 backdrop-blur-xl">
+    <div className="flex min-h-screen flex-col bg-[var(--color-bg-canvas)] font-sans antialiased">
+      <header className="sticky top-0 z-50 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-canvas)]/95 shadow-lg shadow-black/40 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link
             to="/"
@@ -49,7 +49,7 @@ export default function Layout({ children }: LayoutProps) {
             >
               SC
             </span>
-            <span className="text-lg font-bold tracking-tight text-[#3B82F6]">
+            <span className="text-lg font-bold tracking-tight text-[var(--color-brand-blue)]">
               Smart Campus
             </span>
           </Link>
@@ -104,13 +104,13 @@ export default function Layout({ children }: LayoutProps) {
             {isAuthenticated && user ? (
               <>
                 <NotificationBadge />
-                <span className="text-sm text-[#94A3B8]">
+                <span className="text-sm text-[var(--color-text-muted)]">
                   Welcome, <span className="font-medium text-white">{user.name}</span>
                 </span>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="rounded-lg bg-[#EF4444] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_26px_rgba(239,68,68,0.35)] transition-all duration-200 hover:bg-[#DC2626] hover:shadow-[0_0_32px_rgba(239,68,68,0.45)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F87171]"
+                  className="ui-button-danger px-5 py-2.5 shadow-[0_0_26px_rgba(239,68,68,0.28)] hover:shadow-[0_0_30px_rgba(239,68,68,0.4)]"
                 >
                   Logout
                 </button>
@@ -118,7 +118,7 @@ export default function Layout({ children }: LayoutProps) {
             ) : (
               <Link
                 to="/login"
-                className="rounded-lg bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_26px_rgba(59,130,246,0.45)] transition-all duration-200 hover:bg-blue-500 hover:shadow-[0_0_32px_rgba(59,130,246,0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#60A5FA]"
+                className="ui-button-primary px-5 py-2.5 shadow-[0_0_24px_rgba(59,130,246,0.38)] hover:shadow-[0_0_30px_rgba(59,130,246,0.5)]"
               >
                 Sign in
               </Link>

@@ -45,42 +45,59 @@ public class UserService {
 
     @Transactional
     public User authenticateUser(String email, String password) {
-        User user = userRepository.findByEmail(email)
+        String normalizedEmail = email == null ? "" : email.trim().toLowerCase();
+        String submittedPassword = password == null ? "" : password;
+
+        User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Invalid email or password"));
         
         if (user.getPassword() == null) {
             throw new ResourceNotFoundException("Please use Google Sign-In for this account");
         }
-        
-        try {
-            if (!passwordEncoder.matches(password, user.getPassword())) {
-                throw new ResourceNotFoundException("Invalid email or password");
+
+        String storedPassword = user.getPassword();
+        boolean authenticated = false;
+
+        // Support legacy plain-text values while migrating to BCrypt on successful login.
+        if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$") || storedPassword.startsWith("$2y$")) {
+            try {
+                authenticated = passwordEncoder.matches(submittedPassword, storedPassword);
+            } catch (IllegalArgumentException ex) {
+                log.warn("Password hash invalid for user {}: {}", normalizedEmail, ex.getMessage());
             }
-        } catch (IllegalArgumentException ex) {
-            // Corrupt or non-BCrypt hash in DB — treat as bad credentials, not 500
-            log.warn("Password hash invalid for user {}: {}", email, ex.getMessage());
+        } else {
+            authenticated = storedPassword.equals(submittedPassword);
+            if (authenticated) {
+                user.setPassword(passwordEncoder.encode(submittedPassword));
+                userRepository.save(user);
+                log.info("Migrated legacy password format for user: {}", normalizedEmail);
+            }
+        }
+
+        if (!authenticated) {
             throw new ResourceNotFoundException("Invalid email or password");
         }
         
-        log.info("User authenticated successfully: {}", email);
+        log.info("User authenticated successfully: {}", normalizedEmail);
         return user;
     }
 
     @Transactional
     public User createUserWithPassword(String email, String name, String password, Role role) {
-        if (userRepository.findByEmail(email).isPresent()) {
+        String normalizedEmail = email == null ? "" : email.trim().toLowerCase();
+        if (userRepository.findByEmail(normalizedEmail).isPresent()) {
             throw new IllegalArgumentException("User with this email already exists");
         }
         
         User newUser = User.builder()
-                .email(email)
+                .email(normalizedEmail)
                 .name(name)
                 .password(passwordEncoder.encode(password))
                 .provider("local")
                 .role(role != null ? role : Role.STUDENT)
                 .build();
         
-        log.info("Creating new local user: {}", email);
+        log.info("Creating new local user: {}", normalizedEmail);
         return userRepository.save(newUser);
     }
 

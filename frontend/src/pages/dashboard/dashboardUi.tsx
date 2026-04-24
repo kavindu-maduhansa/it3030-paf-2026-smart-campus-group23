@@ -59,18 +59,16 @@ export function DashboardDecor({ children }: { children: ReactNode }) {
 type PillProps = { children: ReactNode; variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' }
 
 const pillStyles: Record<NonNullable<PillProps['variant']>, string> = {
-  default: 'bg-[#1F2937] text-[#94A3B8] ring-1 ring-[#334155]',
-  success: 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30',
-  warning: 'bg-amber-500/15 text-amber-200 ring-1 ring-amber-500/35',
-  danger: 'bg-red-500/15 text-red-300 ring-1 ring-red-500/35',
-  info: 'bg-blue-500/15 text-blue-200 ring-1 ring-blue-500/35',
+  default: 'status-pill bg-slate-500/18 text-slate-200 ring-slate-400/35',
+  success: 'status-pill bg-emerald-500/18 text-emerald-200 ring-emerald-500/35',
+  warning: 'status-pill bg-amber-500/18 text-amber-200 ring-amber-500/38',
+  danger: 'status-pill bg-red-500/20 text-red-200 ring-red-500/40',
+  info: 'status-pill bg-blue-500/18 text-blue-200 ring-blue-500/38',
 }
 
 export function Pill({ children, variant = 'default' }: PillProps) {
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold leading-none tracking-wide ${pillStyles[variant]}`}
-    >
+    <span className={pillStyles[variant]}>
       {children}
     </span>
   )

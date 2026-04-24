@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { toast } from 'react-hot-toast'
+import { toast } from '../services/toast'
 import {
   HiOutlineBolt,
   HiOutlineClipboardDocumentList,
