@@ -18,4 +18,46 @@
   body {
     @apply min-h-screen bg-[#020617] font-sans antialiased text-slate-200;
   }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #334155 #020617;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: #020617;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 9999px;
+    border: 2px solid #020617;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+}
+
+@layer components {
+  .ui-panel {
+    @apply rounded-2xl border border-[#1F2937] bg-[#111827] shadow-lg shadow-black/30;
+  }
+
+  .ui-input {
+    @apply w-full rounded-lg border border-[#334155] bg-[#0F172A] px-3 py-2.5 text-white placeholder-[#64748B] transition-colors focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/40;
+  }
+
+  .ui-button-primary {
+    @apply inline-flex items-center justify-center rounded-lg bg-[#3B82F6] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .ui-button-secondary {
+    @apply inline-flex items-center justify-center rounded-lg border border-[#334155] px-4 py-2.5 text-sm font-semibold text-[#CBD5E1] transition-colors hover:border-[#475569] disabled:cursor-not-allowed disabled:opacity-50;
+  }
 }

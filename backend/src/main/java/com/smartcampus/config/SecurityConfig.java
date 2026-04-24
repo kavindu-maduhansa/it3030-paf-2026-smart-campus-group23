@@ -65,6 +65,12 @@ public class SecurityConfig {
                 
                 // Resource endpoints - allow all authenticated users to view, restrict write operations
                 .requestMatchers("/api/resources/**").permitAll()
+
+                // Booking API endpoints - controller handles session/OAuth validation
+                .requestMatchers("/api/bookings/**").permitAll()
+
+                // Contact message endpoint - public write to Mongo collection
+                .requestMatchers("/api/contact/**").permitAll()
                 
                 // Admin & Analytics endpoints - ADMIN only
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")

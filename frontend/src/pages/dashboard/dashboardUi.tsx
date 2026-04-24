@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react'
 
 export const tilePanel =
-  'rounded-2xl border border-[#1F2937] bg-[#111827] px-5 py-4 shadow-lg shadow-black/25'
+  'ui-panel px-5 py-4 transition-colors hover:border-[#334155]'
 
 export const panelLg =
-  'rounded-2xl border border-[#1F2937] bg-[#111827] p-6 shadow-lg shadow-black/30'
+  'ui-panel p-6'
 
 export const featureCard =
-  'group flex h-full flex-col rounded-2xl border border-[#1F2937] bg-[#111827] p-6 shadow-lg shadow-black/30 transition-all duration-300 hover:-translate-y-1 hover:border-[#3B82F6]/35 hover:bg-[#151f2e] hover:shadow-[0_0_32px_rgba(59,130,246,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3B82F6]'
+  'ui-panel group flex h-full flex-col p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[#3B82F6]/35 hover:bg-[#151f2e] hover:shadow-[0_0_32px_rgba(59,130,246,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3B82F6]'
 
 export const iconBase =
   'mb-5 flex h-14 w-14 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-105'
@@ -21,7 +21,7 @@ type SectionHeaderProps = {
 
 export function SectionHeader({ eyebrow, title, subtitle, action }: SectionHeaderProps) {
   return (
-    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
         {eyebrow ? (
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#3B82F6]">{eyebrow}</p>
@@ -29,7 +29,7 @@ export function SectionHeader({ eyebrow, title, subtitle, action }: SectionHeade
         <h2 className={`text-xl font-bold tracking-tight text-white sm:text-2xl ${eyebrow ? 'mt-2' : ''}`}>
           {title}
         </h2>
-        {subtitle ? <p className="mt-2 max-w-2xl text-sm text-[#94A3B8]">{subtitle}</p> : null}
+        {subtitle ? <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#94A3B8]">{subtitle}</p> : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </div>

@@ -111,6 +111,14 @@ public class UserService {
     }
 
     @Transactional
+    public User updateCurrentUserName(String email, String name) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + email));
+        user.setName(name.trim());
+        return userRepository.save(user);
+    }
+
+    @Transactional
     public void deleteUser(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));

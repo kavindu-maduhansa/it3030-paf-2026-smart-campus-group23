@@ -3,6 +3,7 @@ package com.smartcampus.controller;
 import com.smartcampus.dto.LoginRequest;
 import com.smartcampus.dto.RegisterRequest;
 import com.smartcampus.dto.SessionUser;
+import com.smartcampus.dto.UpdateProfileRequest;
 import com.smartcampus.entity.User;
 import com.smartcampus.security.Role;
 import com.smartcampus.service.UserService;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -210,6 +212,43 @@ public class AuthController {
         Map<String, String> response = new HashMap<>();
         response.put("message", "Logged out successfully");
         return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/profile")
+    public ResponseEntity<?> updateProfile(
+            @Valid @RequestBody UpdateProfileRequest updateProfileRequest,
+            BindingResult bindingResult,
+            @AuthenticationPrincipal OAuth2User principal,
+            HttpServletRequest request) {
+        if (bindingResult.hasErrors()) {
+            Map<String, String> errors = bindingResult.getFieldErrors().stream()
+                    .collect(Collectors.toMap(
+                            error -> error.getField(),
+                            error -> error.getDefaultMessage(),
+                            (first, second) -> first
+                    ));
+            return ResponseEntity.badRequest().body(errors);
+        }
+
+        HttpSession session = request.getSession(false);
+        SessionUser sessionUser = session != null ? resolveSessionUser(session) : null;
+        String email = Optional.ofNullable(sessionUser)
+                .map(SessionUser::getEmail)
+                .orElseGet(() -> principal != null ? principal.getAttribute("email") : null);
+
+        if (email == null || email.isBlank()) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Unauthorized");
+            error.put("message", "User is not authenticated");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        User updatedUser = userService.updateCurrentUserName(email, updateProfileRequest.getName());
+        if (session != null) {
+            session.setAttribute("user", SessionUser.fromEntity(updatedUser));
+        }
+
+        return ResponseEntity.ok(authSuccessBody(updatedUser, "Profile updated successfully"));
     }
 
     private static Map<String, Object> authSuccessBody(User user, String message) {
