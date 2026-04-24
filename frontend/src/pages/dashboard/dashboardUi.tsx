@@ -69,7 +69,7 @@ const pillStyles: Record<NonNullable<PillProps['variant']>, string> = {
 export function Pill({ children, variant = 'default' }: PillProps) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${pillStyles[variant]}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold leading-none tracking-wide ${pillStyles[variant]}`}
     >
       {children}
     </span>

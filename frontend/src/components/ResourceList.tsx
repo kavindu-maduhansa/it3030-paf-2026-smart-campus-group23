@@ -127,7 +127,7 @@ const ResourceList = () => {
       setLoading(false)
       return
     }
-    
+
     try {
       console.log('[ResourceList] Loading resources for user:', user?.email, 'role:', user?.role, 'authenticated:', !!user)
       setLoading(true)
@@ -155,7 +155,7 @@ const ResourceList = () => {
 
   const handleFilter = useCallback(async (newFilters: FilterParams) => {
     if (!user) return
-    
+
     try {
       setLoading(true)
       console.log('[ResourceList] Applying filters:', newFilters)
@@ -174,7 +174,7 @@ const ResourceList = () => {
 
   const handleResetFilter = useCallback(async () => {
     if (!user) return
-    
+
     try {
       setLoading(true)
       const response = await getResources()
@@ -192,7 +192,7 @@ const ResourceList = () => {
 
   const handleResourceEvent = useCallback((event: ResourceEvent) => {
     console.log('[ResourceList] WebSocket event received:', event.action, event.resourceId);
-    
+
     if (event.action === 'DELETE') {
       setResources((prev) => prev.filter((r) => r.id !== event.resourceId))
       return

@@ -1,13 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 import {
   HiOutlineBolt,
   HiOutlineClipboardDocumentList,
-  HiOutlineCpuChip,
   HiOutlineMapPin,
   HiOutlineBellAlert,
-  HiOutlineChartBar,
-  HiOutlinePlus,
   HiOutlineUserCircle,
   HiOutlineEye,
   HiOutlinePencilSquare,
@@ -16,49 +14,37 @@ import {
   HiOutlineXMark,
   HiOutlineClock,
   HiOutlineUser,
-  HiOutlineCheckCircle,
-  HiOutlinePaperClip,
-  HiOutlineChevronRight,
   HiOutlineExclamationTriangle,
+  HiOutlineSquares2X2,
 } from 'react-icons/hi2'
 import { DashboardDecor, Pill, SectionHeader, panelLg, tilePanel, featureCard, iconBase } from './dashboard/dashboardUi'
 import { useAuth } from '../services/useAuth'
-import { 
-  getAssignedTickets, 
-  updateTicketStatus,
+import {
+  getAssignedTickets,
   updateTicket,
+  updateTicketStatus,
   deleteTicket,
   selfAssign,
-  type TicketResponseDTO 
+  type TicketResponseDTO
 } from '../services/ticketService'
+import { getAllAlerts, type TechnicianAlert } from '../services/alertService'
 import { formatDistanceToNow } from 'date-fns'
 import CommentSection from '../components/CommentSection'
+import ConfirmModal from '../components/ConfirmModal'
 
-const CATEGORIES = [
-  'Electrical', 'Plumbing', 'IT & Network', 'AV & Projector', 
-  'HVAC / Air Con', 'Furniture', 'Janitorial', 'Other'
-]
 
-const equipmentHealth = [
-  { name: 'Central HVAC System', health: 88, status: 'Stable' },
-  { name: 'Core Network Switch', health: 94, status: 'Healthy' },
-  { name: 'AV Rack - Auditorium', health: 45, status: 'Maintenance' },
-  { name: 'Lab B-12 Power Unit', health: 76, status: 'Warning' },
-]
 
-const recentActivity = [
-  { user: 'Mike Tech', action: 'Resolved TK-1840 (Projector)', time: '45m ago' },
-  { user: 'Sarah Admin', action: 'Assigned TK-1844 to your queue', time: '2h ago' },
-  { user: 'System', action: 'HVAC Alert: High pressure in Bldg A', time: '3h ago' },
-]
 
 export default function TechnicianDashboardPage() {
   const { user } = useAuth()
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN'
+  const isTechnician = user?.role?.toUpperCase() === 'TECHNICIAN'
   const [tickets, setTickets] = useState<TicketResponseDTO[]>([])
+  const [alerts, setAlerts] = useState<TechnicianAlert[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedTicket, setSelectedTicket] = useState<TicketResponseDTO | null>(null)
-  const [activeModal, setActiveModal] = useState<'view' | 'edit' | 'delete' | null>(null)
-  
+  const [activeModal, setActiveModal] = useState<'view' | 'edit' | 'delete' | 'reject' | 'confirm' | null>(null)
+
   // Edit form state
   const [editForm, setEditForm] = useState({
     title: '',
@@ -66,16 +52,26 @@ export default function TechnicianDashboardPage() {
     category: '',
     priority: '',
     status: '',
-    contactDetails: ''
+    contactDetails: '',
+    resolutionNotes: ''
   })
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState<number[]>([])
   const [isUpdating, setIsUpdating] = useState(false)
+  const [rejectionReason, setRejectionReason] = useState('')
+  const [confirmConfig, setConfirmConfig] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info'
+  }>({ title: '', message: '', onConfirm: () => { } })
+  const [showCommentPrompt, setShowCommentPrompt] = useState(false)
 
   const firstName = user?.name?.split(' ')[0] ?? 'Technician'
 
   useEffect(() => {
     fetchMyTickets()
+    fetchAlerts()
   }, [])
 
   const fetchMyTickets = async () => {
@@ -89,12 +85,22 @@ export default function TechnicianDashboardPage() {
     }
   }
 
+  const fetchAlerts = async () => {
+    try {
+      const response = await getAllAlerts()
+      setAlerts(response.data)
+    } catch (error) {
+      console.error('Failed to fetch alerts:', error)
+    }
+  }
+
   const handleCloseModal = () => {
     setActiveModal(null)
     setSelectedTicket(null)
     setSelectedFiles([])
     setRemovedAttachmentIds([])
     setIsUpdating(false)
+    setShowCommentPrompt(false)
   }
 
   const handleOpenEdit = (t: TicketResponseDTO) => {
@@ -105,12 +111,13 @@ export default function TechnicianDashboardPage() {
       category: t.category,
       priority: t.priority,
       status: t.status,
-      contactDetails: t.contactDetails || ''
+      contactDetails: t.contactDetails || '',
+      resolutionNotes: t.resolutionNotes || ''
     })
     setActiveModal('edit')
   }
 
-  const handleUpdateTicket = async (e: React.FormEvent) => {
+  const handleUpdateTicket = async (e: FormEvent) => {
     e.preventDefault()
     if (!selectedTicket) return
     setIsUpdating(true)
@@ -120,13 +127,59 @@ export default function TechnicianDashboardPage() {
         removedAttachmentIds
       }, selectedFiles)
       fetchMyTickets()
-      handleCloseModal()
+
+      if (editForm.status === 'CLOSED' || editForm.status === 'RESOLVED') {
+        const updated = tickets.find(t => t.id === selectedTicket.id) || selectedTicket
+        setSelectedTicket({ ...updated, status: editForm.status })
+        setActiveModal('view')
+        setShowCommentPrompt(true)
+        toast.success('Ticket closed and finalized.')
+      } else {
+        handleCloseModal()
+        toast.success('Ticket updated successfully')
+      }
     } catch (err) {
       console.error('Update failed', err)
-      alert('Failed to update ticket.')
+      toast.error('Failed to update ticket.')
     } finally {
       setIsUpdating(false)
     }
+  }
+
+  const handleRejectTicket = async () => {
+    if (!selectedTicket || !rejectionReason.trim()) {
+      toast.error("Please provide a reason for rejection.")
+      return
+    }
+
+    setConfirmConfig({
+      title: "Confirm Rejection",
+      message: `Are you sure you want to reject ticket TK-${selectedTicket.id}? This action cannot be undone.`,
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await updateTicket(selectedTicket.id, {
+            title: selectedTicket.title,
+            description: selectedTicket.description,
+            category: selectedTicket.category,
+            priority: selectedTicket.priority,
+            status: 'REJECTED',
+            contactDetails: selectedTicket.contactDetails,
+            resourceId: selectedTicket.resourceId,
+            resolutionNotes: rejectionReason
+          })
+          await fetchMyTickets()
+          setActiveModal('view')
+          setShowCommentPrompt(true)
+          setRejectionReason('')
+          toast.success('Ticket rejected.')
+        } catch (err) {
+          console.error('Failed to reject ticket', err)
+          toast.error("Could not reject the ticket.")
+        }
+      }
+    })
+    setActiveModal('confirm')
   }
 
   const handleDeleteTicket = async () => {
@@ -135,9 +188,10 @@ export default function TechnicianDashboardPage() {
       await deleteTicket(selectedTicket.id)
       fetchMyTickets()
       handleCloseModal()
+      toast.success('Ticket deleted')
     } catch (err) {
       console.error('Delete failed', err)
-      alert('Failed to delete ticket.')
+      toast.error('Failed to delete ticket.')
     }
   }
 
@@ -145,23 +199,13 @@ export default function TechnicianDashboardPage() {
     try {
       await selfAssign(ticketId)
       fetchMyTickets()
+      toast.success('Ticket claimed successfully')
     } catch (err) {
       console.error('Self assignment failed', err)
-      alert('Failed to self-assign.')
+      toast.error('Failed to self-assign.')
     }
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files)
-      const currentAttachmentsCount = (selectedTicket?.attachments?.length || 0) - removedAttachmentIds.length
-      if (currentAttachmentsCount + selectedFiles.length + newFiles.length > 3) {
-        alert('Maximum 3 images allowed per ticket')
-        return
-      }
-      setSelectedFiles([...selectedFiles, ...newFiles])
-    }
-  }
 
   return (
     <DashboardDecor>
@@ -170,50 +214,61 @@ export default function TechnicianDashboardPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#F97316]">
-              Smart Campus · Technician Control
+              Smart Campus · Technician Dashboard
             </p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Terminal: <span className="text-[#3B82F6]">{firstName}</span>
+              Welcome, <span className="text-[#3B82F6]">{firstName}</span>
             </h1>
             <p className="mt-2 text-sm text-[#94A3B8] sm:text-base">
-              Monitor campus health, manage high-priority maintenance tickets, and track SLA performance.
+              Manage Tickets and Alerts.
             </p>
           </div>
         </div>
 
         {/* Quick Action Cards */}
-        <div className="mt-8 grid gap-6 sm:grid-cols-3">
+        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <Link to="/maintenance" className={featureCard}>
-             <span className={`${iconBase} bg-blue-500/10 text-blue-500`}>
-                <HiOutlineClipboardDocumentList className="h-7 w-7" />
-             </span>
-             <h3 className="text-lg font-bold text-white">All Tickets</h3>
-             <p className="mt-2 text-sm text-[#94A3B8]">Browse and manage all campus maintenance requests.</p>
-             <span className="mt-4 text-sm font-semibold text-[#3B82F6] opacity-0 transition-opacity group-hover:opacity-100">
-                View All →
-             </span>
+            <span className={`${iconBase} bg-blue-500/10 text-blue-500`}>
+              <HiOutlineClipboardDocumentList className="h-7 w-7" />
+            </span>
+            <h3 className="text-lg font-bold text-white">All Tickets</h3>
+            <p className="mt-2 text-sm text-[#94A3B8]">Browse and manage all campus maintenance requests.</p>
+            <span className="mt-4 text-sm font-semibold text-[#3B82F6] opacity-0 transition-opacity group-hover:opacity-100">
+              View All →
+            </span>
           </Link>
 
           <Link to="/maintenance?filter=mine" className={featureCard}>
-             <span className={`${iconBase} bg-emerald-500/10 text-emerald-500`}>
-                <HiOutlineUserCircle className="h-7 w-7" />
-             </span>
-             <h3 className="text-lg font-bold text-white">My Jobs</h3>
-             <p className="mt-2 text-sm text-[#94A3B8]">Quickly access tickets assigned to your active queue.</p>
-             <span className="mt-4 text-sm font-semibold text-emerald-500 opacity-0 transition-opacity group-hover:opacity-100">
-                My Queue →
-             </span>
+            <span className={`${iconBase} bg-emerald-500/10 text-emerald-500`}>
+              <HiOutlineUserCircle className="h-7 w-7" />
+            </span>
+            <h3 className="text-lg font-bold text-white">My Jobs</h3>
+            <p className="mt-2 text-sm text-[#94A3B8]">Quickly access tickets assigned to your active queue.</p>
+            <span className="mt-4 text-sm font-semibold text-emerald-500 opacity-0 transition-opacity group-hover:opacity-100">
+              My Queue →
+            </span>
           </Link>
 
-          <Link to="/maintenance/report" className={featureCard}>
-             <span className={`${iconBase} bg-orange-500/10 text-orange-500`}>
-                <HiOutlinePlus className="h-7 w-7" />
-             </span>
-             <h3 className="text-lg font-bold text-white">New Ticket</h3>
-             <p className="mt-2 text-sm text-[#94A3B8]">Submit a new maintenance request or report an incident.</p>
-             <span className="mt-4 text-sm font-semibold text-orange-500 opacity-0 transition-opacity group-hover:opacity-100">
-                Add Ticket →
-             </span>
+          <Link to="/technician/alerts" className={featureCard}>
+            <span className={`${iconBase} bg-rose-500/10 text-rose-500`}>
+              <HiOutlineBellAlert className="h-7 w-7" />
+            </span>
+            <h3 className="text-lg font-bold text-white">Alerts</h3>
+            <p className="mt-2 text-sm text-[#94A3B8]">Manage and broadcast critical operations updates.</p>
+            <span className="mt-4 text-sm font-semibold text-rose-500 opacity-0 transition-opacity group-hover:opacity-100">
+              Manage Alerts →
+            </span>
+          </Link>
+
+          <Link to="/resources" className={featureCard}>
+            <span className={`${iconBase} bg-amber-500/10 text-amber-500`}>
+              <HiOutlineSquares2X2 className="h-7 w-7" />
+            </span>
+            <h3 className="text-lg font-bold text-white">Resources View</h3>
+            <p className="mt-2 text-sm text-[#94A3B8]">Browse lecture halls, labs, and equipment availability.</p>
+            <span className="mt-4 text-sm font-semibold text-amber-500 opacity-0 transition-opacity group-hover:opacity-100">
+              View Facilities →
+            </span>
           </Link>
         </div>
 
@@ -221,196 +276,149 @@ export default function TechnicianDashboardPage() {
 
       {/* Main Content Grid */}
       <div className="mt-12 grid gap-8 lg:grid-cols-3">
-        
+
         {/* Left Column: Work Queue */}
         <div className="lg:col-span-2 space-y-6">
           <div className={panelLg}>
-             <div className="flex items-center justify-between mb-6">
-                <h3 className="flex items-center gap-2 text-xl font-bold text-white">
-                  <HiOutlineClipboardDocumentList className="h-6 w-6 text-[#3B82F6]" />
-                  Active Work Queue
-                </h3>
-             </div>
-             
-             <div className="space-y-4">
-                {isLoading ? (
-                  <div className="py-12 text-center text-[#64748B]">
-                    <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-blue-500/20 border-t-blue-500 mb-4"></div>
-                    <p>Connecting to database...</p>
-                  </div>
-                ) : tickets.length === 0 ? (
-                  <div className="py-12 text-center rounded-xl border border-dashed border-[#1F2937] bg-[#0F172A]/30">
-                    <p className="text-[#64748B]">Your queue is clear. No active jobs assigned.</p>
-                  </div>
-                ) : (
-                  tickets.slice(0, 4).map((t) => (
-                    <li 
-                      key={t.id} 
-                      className="group relative list-none overflow-hidden rounded-2xl border border-[#1F2937] bg-[#0F172A] p-5 transition-all hover:border-[#3B82F6]/50 hover:shadow-2xl hover:shadow-blue-500/10"
-                    >
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex flex-1 gap-4">
-                          {/* Left: Status Icon */}
-                          <div className={`mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                            t.status === 'OPEN' ? 'bg-orange-500/10 text-orange-500' :
-                            t.status === 'IN_PROGRESS' ? 'bg-blue-500/10 text-blue-500' :
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="flex items-center gap-2 text-xl font-bold text-white">
+                <HiOutlineClipboardDocumentList className="h-6 w-6 text-[#3B82F6]" />
+                Active Work Queue
+              </h3>
+            </div>
+
+            <div className="space-y-4">
+              {isLoading ? (
+                <div className="py-12 text-center text-[#64748B]">
+                  <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-blue-500/20 border-t-blue-500 mb-4"></div>
+                  <p>Connecting to database...</p>
+                </div>
+              ) : tickets.length === 0 ? (
+                <div className="py-12 text-center rounded-xl border border-dashed border-[#1F2937] bg-[#0F172A]/30">
+                  <p className="text-[#64748B]">Your queue is clear. No active jobs assigned.</p>
+                </div>
+              ) : (
+                tickets.slice(0, 4).map((t) => (
+                  <li
+                    key={t.id}
+                    className="group relative list-none overflow-hidden rounded-2xl border border-[#1F2937] bg-[#0F172A] p-5 transition-all hover:border-[#3B82F6]/50 hover:shadow-2xl hover:shadow-blue-500/10"
+                  >
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-1 gap-4">
+                        {/* Left: Status Icon */}
+                        <div className={`mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${t.status === 'OPEN' ? 'bg-orange-500/10 text-orange-500' :
+                          t.status === 'IN_PROGRESS' ? 'bg-blue-500/10 text-blue-500' :
                             'bg-emerald-500/10 text-emerald-500'
                           }`}>
-                            <HiOutlineBolt className="h-5 w-5" />
-                          </div>
-
-                          <div className="flex-1 space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-mono text-xs font-bold text-[#475569]">TK-{t.id}</span>
-                              <Pill variant={t.priority === 'URGENT' || t.priority === 'HIGH' ? 'danger' : t.priority === 'MEDIUM' ? 'warning' : 'default'}>
-                                {t.priority}
-                              </Pill>
-                              <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                                t.status === 'OPEN' ? 'text-orange-400' :
-                                t.status === 'IN_PROGRESS' ? 'text-blue-400' :
-                                'text-emerald-400'
-                              }`}>
-                                {t.status.replace('_', ' ')}
-                              </span>
-                            </div>
-                            <h3 className="text-lg font-bold text-white transition-colors group-hover:text-[#3B82F6]">
-                              {t.title}
-                            </h3>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1 text-xs font-medium text-[#64748B]">
-                              <span className="flex items-center gap-1.5">
-                                <HiOutlineUser className="h-3.5 w-3.5" />
-                                {t.userName}
-                              </span>
-                              <span className="flex items-center gap-1.5">
-                                <HiOutlineMapPin className="h-3.5 w-3.5" />
-                                {t.resourceName || t.location}
-                              </span>
-                              <span className="flex items-center gap-1.5">
-                                <HiOutlineClock className="h-3.5 w-3.5" />
-                                {formatDistanceToNow(new Date(t.createdAt), { addSuffix: true })}
-                              </span>
-                            </div>
-                          </div>
+                          <HiOutlineBolt className="h-5 w-5" />
                         </div>
 
-                        {/* Actions */}
-                        <div className="flex items-center gap-2 sm:ml-4">
-                          <button 
-                            onClick={() => { setSelectedTicket(t); setActiveModal('view'); }}
-                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1F2937] bg-[#111827] text-[#64748B] transition-all hover:border-[#3B82F6] hover:text-[#3B82F6] hover:shadow-lg hover:shadow-blue-500/10"
-                            title="View"
-                          >
-                            <HiOutlineEye className="h-5 w-5" />
-                          </button>
-                          <button 
+                        <div className="flex-1 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-[#475569]">TK-{t.id}</span>
+                            <Pill variant={t.priority === 'URGENT' || t.priority === 'HIGH' ? 'danger' : t.priority === 'MEDIUM' ? 'warning' : 'default'}>
+                              {t.priority}
+                            </Pill>
+                            <span className={`text-[10px] font-bold uppercase tracking-wider ${t.status === 'OPEN' ? 'text-orange-400' :
+                              t.status === 'IN_PROGRESS' ? 'text-blue-400' :
+                                t.status === 'RESOLVED' ? 'text-emerald-400' :
+                                  t.status === 'REJECTED' ? 'text-red-400' : 'text-slate-400'
+                              }`}>
+                              {t.status.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <h3 className="text-lg font-bold text-white transition-colors group-hover:text-[#3B82F6]">
+                            {t.title}
+                          </h3>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1 text-xs font-medium text-[#64748B]">
+                            <span className="flex items-center gap-1.5">
+                              <HiOutlineUser className="h-3.5 w-3.5" />
+                              {t.userName}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <HiOutlineMapPin className="h-3.5 w-3.5" />
+                              {t.resourceName || t.location}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <HiOutlineClock className="h-3.5 w-3.5" />
+                              {formatDistanceToNow(new Date(t.createdAt), { addSuffix: true })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 sm:ml-4">
+                        <button
+                          onClick={() => { setSelectedTicket(t); setActiveModal('view'); }}
+                          className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1F2937] bg-[#111827] text-[#64748B] transition-all hover:border-[#3B82F6] hover:text-[#3B82F6] hover:shadow-lg hover:shadow-blue-500/10"
+                          title="View"
+                        >
+                          <HiOutlineEye className="h-5 w-5" />
+                        </button>
+                        {t.status !== 'REJECTED' && (
+                          <button
                             onClick={() => handleOpenEdit(t)}
                             className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1F2937] bg-[#111827] text-[#64748B] transition-all hover:border-amber-500/50 hover:text-amber-500 hover:shadow-lg hover:shadow-amber-500/10"
                             title="Update"
                           >
                             <HiOutlinePencilSquare className="h-5 w-5" />
                           </button>
-                          {!t.assignedToId && (
-                            <button 
-                              onClick={() => handleSelfAssign(t.id)}
-                              className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1F2937] bg-[#111827] text-[#64748B] transition-all hover:border-emerald-500/50 hover:text-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10"
-                              title="Claim Ticket"
-                            >
-                              <HiOutlineUserPlus className="h-5 w-5" />
-                            </button>
-                          )}
-                          <button 
-                            onClick={() => { setSelectedTicket(t); setActiveModal('delete'); }}
-                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1F2937] bg-[#111827] text-[#64748B] transition-all hover:border-rose-500/50 hover:text-rose-500 hover:shadow-lg hover:shadow-rose-500/10"
-                            title="Remove"
+                        )}
+                        {!t.assignedToId && (
+                          <button
+                            onClick={() => handleSelfAssign(t.id)}
+                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1F2937] bg-[#111827] text-[#64748B] transition-all hover:border-emerald-500/50 hover:text-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10"
+                            title="Claim Ticket"
                           >
-                            <HiOutlineTrash className="h-5 w-5" />
+                            <HiOutlineUserPlus className="h-5 w-5" />
                           </button>
-                        </div>
+                        )}
                       </div>
-                    </li>
-                  ))
-                )}
-             </div>
-          </div>
-
-          {/* Infrastructure Health */}
-          <div className={panelLg}>
-            <SectionHeader 
-              title="Infrastructure Health" 
-              subtitle="Real-time monitoring of critical campus assets and utility systems."
-            />
-            <div className="grid gap-4 sm:grid-cols-2">
-              {equipmentHealth.map((item) => (
-                <div key={item.name} className={`${tilePanel} flex items-center gap-4`}>
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
-                    item.health > 90 ? 'bg-emerald-500/10 text-emerald-500' : 
-                    item.health > 70 ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'
-                  }`}>
-                    <HiOutlineCpuChip className="h-6 w-6" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-white">{item.name}</p>
-                      <span className="text-xs font-mono text-[#64748B]">{item.health}%</span>
                     </div>
-                    <div className="mt-2 h-1.5 w-full rounded-full bg-[#1F2937]">
-                      <div 
-                        className={`h-full rounded-full ${
-                          item.health > 90 ? 'bg-emerald-500' : 
-                          item.health > 70 ? 'bg-amber-500' : 'bg-red-500'
-                        }`} 
-                        style={{ width: `${item.health}%` }}
-                      />
-                    </div>
-                    <p className="mt-1 text-[10px] text-[#64748B] uppercase tracking-wider font-bold">{item.status}</p>
-                  </div>
-                </div>
-              ))}
+                  </li>
+                ))
+              )}
             </div>
           </div>
+
         </div>
 
         {/* Right Column */}
         <div className="space-y-6">
-          <div className={`${tilePanel} border-rose-500/20 bg-gradient-to-br from-rose-500/5 to-transparent`}>
+          <div className={`${tilePanel} border-slate-700 bg-slate-900/50`}>
             <h3 className="flex items-center gap-2 text-sm font-bold text-white">
-              <HiOutlineBellAlert className="h-5 w-5 text-rose-500" />
-              Critical Alerts
+              <HiOutlineBellAlert className="h-5 w-5 text-blue-500" />
+              Campus Alerts
             </h3>
             <div className="mt-4 space-y-3">
-              <div className="rounded-lg border border-rose-500/20 bg-[#0F172A] p-3">
-                <p className="text-xs font-bold text-rose-400 uppercase">Emergency - Power</p>
-                <p className="mt-1 text-sm text-[#CBD5E1]">Fluctuating voltage in IT Lab 2.</p>
-              </div>
+              {alerts.length === 0 ? (
+                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                  <p className="text-xs font-bold text-emerald-400 uppercase">System Status</p>
+                  <p className="mt-1 text-sm text-[#CBD5E1]">No alerts reported.</p>
+                </div>
+              ) : (
+                alerts.slice(0, 3).map((alert) => (
+                  <div key={alert.id} className={`rounded-lg border p-3 ${alert.type === 'CRITICAL' ? 'border-rose-500/20 bg-rose-500/5' :
+                    alert.type === 'WARNING' ? 'border-amber-500/20 bg-amber-500/5' :
+                      'border-blue-500/20 bg-blue-500/5'
+                    }`}>
+                    <div className="flex items-center justify-between">
+                      <p className={`text-[10px] font-bold uppercase ${alert.type === 'CRITICAL' ? 'text-rose-400' :
+                        alert.type === 'WARNING' ? 'text-amber-400' :
+                          'text-blue-400'
+                        }`}>{alert.type}</p>
+                      <span className="text-[9px] text-slate-500">{formatDistanceToNow(new Date(alert.createdAt), { addSuffix: true })}</span>
+                    </div>
+                    <p className="mt-1 text-sm font-bold text-white line-clamp-1">{alert.title}</p>
+                    <p className="mt-0.5 text-xs text-[#94A3B8] line-clamp-2">{alert.message}</p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
-          <div className={panelLg}>
-             <h3 className="flex items-center gap-2 text-sm font-bold text-white mb-4">
-                <HiOutlineChartBar className="h-5 w-5 text-[#3B82F6]" />
-                Recent Operations
-             </h3>
-             <ul className="space-y-4">
-                {recentActivity.map((act, i) => (
-                  <li key={i} className="flex gap-3">
-                    <div className="h-8 w-8 shrink-0 rounded-full bg-[#1F2937] flex items-center justify-center text-[10px] font-bold text-[#3B82F6]">
-                      {act.user.split(' ')[0][0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[#CBD5E1] truncate font-semibold">{act.user}</p>
-                      <p className="text-[10px] text-[#64748B]">{act.action} · {act.time}</p>
-                    </div>
-                  </li>
-                ))}
-             </ul>
-          </div>
 
-          <div className={`${tilePanel} border-blue-500/20 bg-[#0F172A]`}>
-             <h3 className="text-xs font-bold text-[#3B82F6] uppercase tracking-wider">Handover Note</h3>
-             <p className="mt-2 text-sm text-[#94A3B8] italic">
-               "Bldg C main riser is being inspected at 18:00."
-             </p>
-          </div>
         </div>
       </div>
 
@@ -419,55 +427,69 @@ export default function TechnicianDashboardPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={handleCloseModal} />
           <div className="relative w-full max-w-4xl transform overflow-hidden rounded-[2.5rem] border border-[#334155] bg-[#0F172A] shadow-2xl transition-all">
-            
+
             {activeModal === 'view' && (
-              <div className="flex h-[85vh] flex-col lg:flex-row">
-                {/* Left: Content */}
-                <div className="flex flex-1 flex-col overflow-y-auto p-8 lg:p-10">
-                  <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                {/* Content */}
+                <div className="p-8 lg:p-10">
+                  <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <span className="font-mono text-xs font-bold text-[#475569]">TK-{selectedTicket.id}</span>
                       <Pill variant={selectedTicket.priority === 'HIGH' || selectedTicket.priority === 'URGENT' ? 'danger' : 'warning'}>
                         {selectedTicket.priority}
                       </Pill>
                     </div>
-                    <button onClick={handleCloseModal} className="rounded-full bg-white/5 p-2 text-[#64748B] hover:text-white transition-colors lg:hidden">
+                    <button onClick={handleCloseModal} className="rounded-full bg-white/5 p-2 text-[#64748B] hover:text-white transition-colors">
                       <HiOutlineXMark className="h-6 w-6" />
                     </button>
                   </div>
 
-                  <h2 className="mt-4 text-3xl font-bold text-white leading-tight">{selectedTicket.title}</h2>
-                  
-                  <div className="mt-10 grid grid-cols-2 gap-8 border-y border-[#1F2937]/50 py-8">
-                    <div className="space-y-6">
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Reporter</p>
-                        <p className="mt-2 text-sm font-bold text-white">{selectedTicket.userName}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Location</p>
-                        <p className="mt-2 flex items-center gap-2 text-sm font-bold text-white">
-                          <HiOutlineMapPin className="h-4 w-4 text-[#3B82F6]" />
-                          {selectedTicket.resourceName || selectedTicket.location}
-                        </p>
-                      </div>
+                  <h2 className="text-3xl font-bold text-white leading-tight">{selectedTicket.title}</h2>
+
+                  <div className="mt-8 grid grid-cols-2 lg:grid-cols-5 gap-6 border-y border-[#1F2937]/50 py-6">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Reporter</p>
+                      <p className="mt-1 text-sm font-bold text-white">{selectedTicket.userName || 'Anonymous'}</p>
                     </div>
-                    <div className="space-y-6">
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Current Status</p>
-                        <p className="mt-2 text-sm font-black uppercase tracking-wider text-[#3B82F6]">{selectedTicket.status.replace('_', ' ')}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Date Logged</p>
-                        <p className="mt-2 text-sm font-bold text-white">{formatDistanceToNow(new Date(selectedTicket.createdAt), { addSuffix: true })}</p>
-                      </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Contact</p>
+                      <p className="mt-1 text-sm font-bold text-emerald-500">{selectedTicket.contactDetails || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Location</p>
+                      <p className="mt-1 flex items-center gap-2 text-sm font-bold text-white">
+                        <HiOutlineMapPin className="h-4 w-4 text-[#3B82F6]" />
+                        {selectedTicket.resourceName || selectedTicket.location}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Status</p>
+                      <p className={`mt-1 text-sm font-black uppercase tracking-wider ${selectedTicket.status === 'REJECTED' ? 'text-rose-500' : 'text-[#3B82F6]'
+                        }`}>{selectedTicket.status.replace('_', ' ')}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Logged</p>
+                      <p className="mt-1 text-sm font-bold text-white">{formatDistanceToNow(new Date(selectedTicket.createdAt), { addSuffix: true })}</p>
                     </div>
                   </div>
 
                   <div className="mt-10">
                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">Incident Details</p>
-                    <p className="mt-4 text-base leading-relaxed text-[#94A3B8] font-medium">{selectedTicket.description}</p>
+                    <div className="mt-4 text-base leading-relaxed text-[#94A3B8] font-medium whitespace-pre-wrap">
+                      {selectedTicket.description.split('[REJECTION REASON]:')[0].trim()}
+                    </div>
                   </div>
+
+                  {(selectedTicket.resolutionNotes || selectedTicket.description.includes('[REJECTION REASON]:')) && (
+                    <div className="mt-6 rounded-xl border p-4 border-red-500/20 bg-red-500/5 text-rose-400">
+                      <span className="font-bold uppercase tracking-widest text-[10px] block mb-2">
+                        {selectedTicket.status === 'REJECTED' ? 'Rejection Feedback' : 'Resolution Notes'}
+                      </span>
+                      <p className="whitespace-pre-wrap text-sm text-[#CBD5E1]">
+                        {selectedTicket.resolutionNotes || selectedTicket.description.split('[REJECTION REASON]:')[1]?.trim()}
+                      </p>
+                    </div>
+                  )}
 
                   {selectedTicket.imageUrls && selectedTicket.imageUrls.length > 0 && (
                     <div className="mt-10">
@@ -484,19 +506,36 @@ export default function TechnicianDashboardPage() {
                       </div>
                     </div>
                   )}
-                </div>
 
-                {/* Right: Comments */}
-                <div className="flex flex-1 flex-col bg-[#0F172A] border-l border-[#1F2937]">
-                  <div className="flex items-center justify-between border-b border-[#1F2937] px-8 py-4 bg-[#111827]/50">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-widest">Conversation</h3>
-                    <button onClick={handleCloseModal} className="hidden lg:block rounded-full bg-white/5 p-2 text-[#64748B] hover:text-white transition-colors">
-                      <HiOutlineXMark className="h-6 w-6" />
+                  <div className="mt-8 pt-8 border-t border-[#1F2937]/50">
+                    <CommentSection
+                      ticketId={selectedTicket.id}
+                      autoFocus={showCommentPrompt}
+                      reporterId={selectedTicket.userId}
+                      assigneeId={selectedTicket.assignedToId}
+                    />
+                  </div>
+                </div>
+                <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-[#1F2937]/50 p-8">
+                  {isAdmin && selectedTicket.status !== 'REJECTED' && (
+                    <button
+                      onClick={() => {
+                        setRejectionReason('')
+                        setActiveModal('reject')
+                      }}
+                      type="button"
+                      className="rounded-xl border border-rose-500/30 bg-red-500/5 px-6 py-2.5 text-sm font-bold text-rose-400 hover:bg-red-500/10 transition-all"
+                    >
+                      Reject Ticket
                     </button>
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <CommentSection ticketId={selectedTicket.id} />
-                  </div>
+                  )}
+                  <button
+                    onClick={handleCloseModal}
+                    type="button"
+                    className="rounded-xl bg-[#3B82F6] px-8 py-2.5 text-sm font-bold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20"
+                  >
+                    Close Details
+                  </button>
                 </div>
               </div>
             )}
@@ -513,118 +552,54 @@ export default function TechnicianDashboardPage() {
                   </button>
                 </div>
 
-                <div className="max-h-[70vh] overflow-y-auto p-8">
-                  <div className="grid gap-8 lg:grid-cols-2">
-                    <div className="space-y-6">
-                      <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Ticket Title</label>
-                        <input 
-                          type="text" 
-                          value={editForm.title} 
-                          onChange={(e) => setEditForm({...editForm, title: e.target.value})}
-                          className="mt-2 w-full rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3 text-sm text-white focus:border-[#3B82F6] focus:ring-0" 
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Category</label>
-                        <select 
-                          value={editForm.category} 
-                          onChange={(e) => setEditForm({...editForm, category: e.target.value})}
-                          className="mt-2 w-full rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3 text-sm text-white focus:border-[#3B82F6] focus:ring-0"
-                        >
-                          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Ticket Status</label>
-                        <div className="mt-2 flex gap-3">
-                          {['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map(s => (
-                            <button 
-                              key={s} type="button"
-                              onClick={() => setEditForm({...editForm, status: s})}
-                              className={`flex-1 rounded-xl border py-2 text-[9px] font-bold transition-all ${
-                                editForm.status === s 
-                                ? 'border-[#3B82F6] bg-blue-500/10 text-[#3B82F6]' 
-                                : 'border-[#1F2937] bg-[#0F172A] text-[#475569] hover:border-[#334155]'
+                <div className="p-8 space-y-8">
+                  <div className="max-w-md mx-auto space-y-8">
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Ticket Status</label>
+                      <div className="mt-3 flex flex-wrap gap-3">
+                        {['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map(s => (
+                          <button
+                            key={s} type="button"
+                            onClick={() => setEditForm({ ...editForm, status: s })}
+                            className={`flex-1 rounded-2xl border py-3 text-xs font-bold transition-all ${editForm.status === s
+                              ? 'border-[#3B82F6] bg-blue-500/10 text-[#3B82F6] shadow-lg shadow-blue-500/10'
+                              : 'border-[#1F2937] bg-[#0F172A] text-[#475569] hover:border-[#334155]'
                               }`}
-                            >
-                              {s.replace('_', ' ')}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Priority Level</label>
-                        <div className="mt-2 flex gap-3">
-                          {['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map(p => (
-                            <button 
-                              key={p} type="button"
-                              onClick={() => setEditForm({...editForm, priority: p})}
-                              className={`flex-1 rounded-xl border py-2 text-[10px] font-bold transition-all ${
-                                editForm.priority === p 
-                                ? 'border-[#3B82F6] bg-blue-500/10 text-[#3B82F6]' 
-                                : 'border-[#1F2937] bg-[#0F172A] text-[#475569] hover:border-[#334155]'
-                              }`}
-                            >
-                              {p}
-                            </button>
-                          ))}
-                        </div>
+                          >
+                            {s.replace('_', ' ')}
+                          </button>
+                        ))}
                       </div>
                     </div>
 
-                    <div className="space-y-6">
-                      <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Full Description</label>
-                        <textarea 
-                          rows={4} 
-                          value={editForm.description} 
-                          onChange={(e) => setEditForm({...editForm, description: e.target.value})}
-                          className="mt-2 w-full rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3 text-sm text-white focus:border-[#3B82F6] focus:ring-0" 
-                        />
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Priority Level</label>
+                      <div className="mt-3 flex flex-wrap gap-3">
+                        {['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map(p => (
+                          <button
+                            key={p} type="button"
+                            onClick={() => setEditForm({ ...editForm, priority: p })}
+                            className={`flex-1 rounded-2xl border py-3 text-xs font-bold transition-all ${editForm.priority === p
+                              ? 'border-[#3B82F6] bg-blue-500/10 text-[#3B82F6] shadow-lg shadow-blue-500/10'
+                              : 'border-[#1F2937] bg-[#0F172A] text-[#475569] hover:border-[#334155]'
+                              }`}
+                          >
+                            {p}
+                          </button>
+                        ))}
                       </div>
-                      
-                      {/* Image Management */}
-                      <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Attachments (Max 3)</label>
-                        <div className="mt-3 flex flex-wrap gap-3">
-                          {selectedTicket.attachments?.filter(a => !removedAttachmentIds.includes(a.id)).map(a => (
-                            <div key={a.id} className="group relative h-20 w-20 overflow-hidden rounded-xl border border-[#1F2937]">
-                              <img src={a.url} alt="Attached" className="h-full w-full object-cover" />
-                              <button 
-                                type="button"
-                                onClick={() => setRemovedAttachmentIds([...removedAttachmentIds, a.id])}
-                                className="absolute top-1 right-1 h-5 w-5 rounded-full bg-rose-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <HiOutlineXMark className="h-3 w-3" />
-                              </button>
-                            </div>
-                          ))}
-                          
-                          {selectedFiles.map((file, i) => (
-                            <div key={i} className="group relative h-20 w-20 overflow-hidden rounded-xl border border-[#3B82F6]/50 bg-blue-500/5">
-                              <div className="flex h-full w-full flex-col items-center justify-center text-[#3B82F6]">
-                                <HiOutlinePaperClip className="h-6 w-6" />
-                                <span className="mt-1 text-[8px] font-bold truncate px-1 w-full text-center">{file.name}</span>
-                              </div>
-                              <button 
-                                type="button"
-                                onClick={() => setSelectedFiles(selectedFiles.filter((_, idx) => idx !== i))}
-                                className="absolute top-1 right-1 h-5 w-5 rounded-full bg-rose-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <HiOutlineXMark className="h-3 w-3" />
-                              </button>
-                            </div>
-                          ))}
+                    </div>
 
-                          {((selectedTicket.attachments?.length || 0) - removedAttachmentIds.length + selectedFiles.length) < 3 && (
-                            <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#1F2937] text-[#475569] transition-all hover:border-[#3B82F6] hover:text-[#3B82F6] hover:bg-blue-500/5">
-                              <HiOutlinePlus className="h-6 w-6" />
-                              <input type="file" className="hidden" accept="image/*" multiple onChange={handleFileChange} />
-                            </label>
-                          )}
-                        </div>
-                      </div>
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Resolution Notes (Staff Only)</label>
+                      <textarea
+                        rows={4}
+                        value={editForm.resolutionNotes}
+                        onChange={(e) => setEditForm({ ...editForm, resolutionNotes: e.target.value })}
+                        disabled={!isTechnician && !isAdmin}
+                        placeholder={isTechnician || isAdmin ? "Describe the resolution steps..." : "Only staff can add resolution notes."}
+                        className={`mt-3 w-full rounded-2xl border border-[#1F2937] bg-[#0F172A] p-6 text-sm text-white focus:border-[#3B82F6] outline-none resize-none transition-all ${!isTechnician && !isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      />
                     </div>
                   </div>
                 </div>
@@ -633,8 +608,8 @@ export default function TechnicianDashboardPage() {
                   <button type="button" onClick={handleCloseModal} className="rounded-2xl border border-[#334155] px-8 py-3 text-sm font-bold text-white hover:bg-white/5 transition-all">
                     Discard Changes
                   </button>
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={isUpdating}
                     className="rounded-2xl bg-[#3B82F6] px-10 py-3 text-sm font-bold text-white hover:bg-blue-500 hover:shadow-xl hover:shadow-blue-500/20 transition-all disabled:opacity-50"
                   >
@@ -663,9 +638,61 @@ export default function TechnicianDashboardPage() {
                 </div>
               </div>
             )}
+
+            {activeModal === 'reject' && selectedTicket && (
+              <div className="flex flex-col p-12">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-rose-500/10 text-rose-500 mb-8">
+                  <HiOutlineXMark className="h-10 w-10" />
+                </div>
+                <h2 className="text-3xl font-bold text-white">Rejection Details</h2>
+                <p className="mt-4 text-[#94A3B8] leading-relaxed">
+                  Please specify why ticket <span className="font-mono text-white">TK-{selectedTicket.id}</span> is being rejected. This will be visible to the reporter.
+                </p>
+
+                <div className="mt-8 space-y-6">
+                  <textarea
+                    required
+                    rows={4}
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="Type your reason for rejection..."
+                    className="w-full rounded-3xl border border-[#334155] bg-[#0F172A] p-6 text-white focus:border-rose-500 outline-none resize-none shadow-inner"
+                  />
+
+                  <div className="flex flex-col sm:flex-row justify-end gap-4">
+                    <button
+                      type="button"
+                      onClick={handleCloseModal}
+                      className="rounded-2xl border border-[#334155] px-10 py-3.5 text-sm font-bold text-white hover:bg-white/5 transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRejectTicket}
+                      className="rounded-2xl bg-rose-600 px-10 py-3.5 text-sm font-bold text-white hover:bg-rose-500 shadow-xl shadow-rose-500/20 transition-all"
+                    >
+                      Reject Permanently
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        show={activeModal === 'confirm'}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        variant={confirmConfig.type || 'warning'}
+        onConfirm={() => {
+          confirmConfig.onConfirm()
+          handleCloseModal()
+        }}
+        onCancel={() => setActiveModal('reject')}
+      />
     </DashboardDecor>
   )
 }

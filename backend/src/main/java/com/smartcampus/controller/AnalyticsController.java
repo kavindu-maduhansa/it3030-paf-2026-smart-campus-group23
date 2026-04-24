@@ -27,6 +27,15 @@ public class AnalyticsController {
     private AnalyticsService analyticsService;
 
     /**
+     * GET: Administrative summary stats
+     * HTTP: 200 OK
+     */
+    @GetMapping("/admin-stats")
+    public ResponseEntity<com.smartcampus.dto.AdminStatsDTO> getAdminStats() {
+        return ResponseEntity.ok(analyticsService.getAdminStats());
+    }
+
+    /**
      * GET: Top resources by booking count
      * Query param: limit (default 10)
      * HTTP: 200 OK

@@ -28,6 +28,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
      * Find bookings by status
      */
     List<Booking> findByStatus(String status);
+    /**
+     * Count bookings by status
+     */
+    long countByStatus(String status);
 
     /**
      * Find bookings by date range

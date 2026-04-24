@@ -1,21 +1,21 @@
 package com.smartcampus.service;
- 
- import com.smartcampus.dto.CommentRequestDTO;
- import com.smartcampus.dto.CommentResponseDTO;
- import com.smartcampus.entity.User;
- import com.smartcampus.exception.ResourceNotFoundException;
- import com.smartcampus.model.Comment;
- import com.smartcampus.model.Ticket;
- import com.smartcampus.repository.CommentRepository;
- import com.smartcampus.repository.TicketRepository;
- import lombok.RequiredArgsConstructor;
- import lombok.extern.slf4j.Slf4j;
- import org.springframework.security.access.AccessDeniedException;
- import org.springframework.stereotype.Service;
- import org.springframework.transaction.annotation.Transactional;
- 
- import java.util.List;
- import java.util.stream.Collectors;
+
+import com.smartcampus.dto.CommentRequestDTO;
+import com.smartcampus.dto.CommentResponseDTO;
+import com.smartcampus.entity.User;
+import com.smartcampus.exception.ResourceNotFoundException;
+import com.smartcampus.model.Comment;
+import com.smartcampus.model.Ticket;
+import com.smartcampus.repository.CommentRepository;
+import com.smartcampus.repository.TicketRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,57 +25,78 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final TicketRepository ticketRepository;
 
+    @Transactional
+    public CommentResponseDTO addComment(Long ticketId, CommentRequestDTO dto, User user) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + ticketId));
+
+        // Check if user has permission to comment
+        boolean isOwner = ticket.getUser().getId().equals(user.getId());
+        boolean isAssignedTech = ticket.getAssignedTo() != null && ticket.getAssignedTo().getId().equals(user.getId());
+        boolean isAdmin = user.getRole() == com.smartcampus.security.Role.ADMIN;
+
+        if (!isOwner && !isAssignedTech && !isAdmin) {
+            log.warn("User {} attempted to comment on ticket {} without permission", user.getEmail(), ticketId);
+            throw new AccessDeniedException("Only the ticket owner, assigned technician, or Admin can comment on this ticket");
+        }
+
+        Comment comment = new Comment();
+        comment.setTicket(ticket);
+        comment.setUser(user);
+        comment.setContent(dto.getContent());
+
+        Comment savedComment = commentRepository.save(comment);
+        log.info("New comment added to ticket {} by user {}", ticketId, user.getEmail());
+        return convertToResponseDTO(savedComment);
+    }
+
     @Transactional(readOnly = true)
-    public List<CommentResponseDTO> getCommentsByTicketId(Long ticketId, User currentUser) {
-        log.info("Fetching comments for ticket {} by user {}", ticketId, currentUser.getEmail());
-        
-        return commentRepository.findByTicketId(ticketId).stream()
-                .map(comment -> mapToResponseDTO(comment, currentUser))
+    public List<CommentResponseDTO> getCommentsByTicketId(Long ticketId) {
+        return commentRepository.findByTicketIdOrderByCreatedAtDesc(ticketId)
+                .stream()
+                .map(this::convertToResponseDTO)
                 .collect(Collectors.toList());
     }
 
     @Transactional
-    public CommentResponseDTO addComment(Long ticketId, CommentRequestDTO requestDTO, User currentUser) {
-        Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + ticketId));
+    public CommentResponseDTO updateComment(Long commentId, CommentRequestDTO dto, User user) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found with id: " + commentId));
 
-        log.info("Adding comment to ticket {} by user {}", ticketId, currentUser.getEmail());
+        // Ownership check
+        if (!comment.getUser().getId().equals(user.getId()) && user.getRole() != com.smartcampus.security.Role.ADMIN) {
+            throw new AccessDeniedException("You do not have permission to edit this comment");
+        }
 
-        Comment comment = new Comment();
-        comment.setTicket(ticket);
-        comment.setUser(currentUser);
-        comment.setContent(requestDTO.getContent());
-
-        Comment savedComment = commentRepository.save(comment);
-        return mapToResponseDTO(savedComment, currentUser);
-    }
-
-    private CommentResponseDTO mapToResponseDTO(Comment comment, User currentUser) {
-        return CommentResponseDTO.builder()
-                .id(comment.getId())
-                .content(comment.getContent())
-                .authorName(comment.getUser().getName())
-                .authorRole(comment.getUser().getRole().name())
-                .createdAt(comment.getCreatedAt())
-                .isMe(comment.getUser().getId().equals(currentUser.getId()))
-                .build();
+        comment.setContent(dto.getContent());
+        Comment updatedComment = commentRepository.save(comment);
+        log.info("Comment {} updated by user {}", commentId, user.getEmail());
+        return convertToResponseDTO(updatedComment);
     }
 
     @Transactional
-    public void deleteComment(Long id, User currentUser) {
-        Comment comment = commentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Comment not found with id: " + id));
+    public void deleteComment(Long commentId, User user) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found with id: " + commentId));
 
-        log.info("Attempting to delete comment {} by user {}", id, currentUser.getEmail());
-
-        // Logic to ensure only the comment owner can delete it
-        if (!comment.getUser().getId().equals(currentUser.getId())) {
-            log.warn("User {} attempted to delete comment {} owned by user {}",
-                    currentUser.getId(), id, comment.getUser().getId());
-            throw new AccessDeniedException("You are not the owner of this comment");
+        // Ownership check: Only author or admin can delete
+        if (!comment.getUser().getId().equals(user.getId()) && user.getRole() != com.smartcampus.security.Role.ADMIN) {
+            throw new AccessDeniedException("You do not have permission to delete this comment");
         }
 
         commentRepository.delete(comment);
-        log.info("Comment {} deleted successfully", id);
+        log.info("Comment {} deleted by user {}", commentId, user.getEmail());
+    }
+
+    private CommentResponseDTO convertToResponseDTO(Comment comment) {
+        return CommentResponseDTO.builder()
+                .id(comment.getId())
+                .ticketId(comment.getTicket().getId())
+                .userId(comment.getUser().getId())
+                .userName(comment.getUser().getName())
+                .content(comment.getContent())
+                .createdAt(comment.getCreatedAt())
+                .updatedAt(comment.getUpdatedAt())
+                .build();
     }
 }

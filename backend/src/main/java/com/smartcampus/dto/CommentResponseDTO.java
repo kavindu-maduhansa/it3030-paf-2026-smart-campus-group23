@@ -8,14 +8,15 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class CommentResponseDTO {
     private Long id;
+    private Long ticketId;
+    private Long userId;
+    private String userName;
     private String content;
-    private String authorName;
-    private String authorRole;
     private LocalDateTime createdAt;
-    private boolean isMe;
+    private LocalDateTime updatedAt;
 }

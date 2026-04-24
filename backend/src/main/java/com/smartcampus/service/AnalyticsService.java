@@ -4,6 +4,11 @@ import com.smartcampus.dto.analytics.TopResourceDTO;
 import com.smartcampus.dto.analytics.PeakHourDTO;
 import com.smartcampus.dto.analytics.BookingsByTypeDTO;
 import com.smartcampus.repository.BookingRepository;
+import com.smartcampus.repository.UserRepository;
+import com.smartcampus.repository.TicketRepository;
+import com.smartcampus.repository.ResourceRepository;
+import com.smartcampus.dto.AdminStatsDTO;
+import com.smartcampus.model.Ticket;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +27,27 @@ public class AnalyticsService {
 
     @Autowired
     private BookingRepository bookingRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private TicketRepository ticketRepository;
+
+    @Autowired
+    private ResourceRepository resourceRepository;
+
+    /**
+     * Get summary stats for admin dashboard
+     */
+    public AdminStatsDTO getAdminStats() {
+        return AdminStatsDTO.builder()
+                .totalUsers(userRepository.count())
+                .pendingBookings(bookingRepository.countByStatus("PENDING"))
+                .openTickets(ticketRepository.countByStatus(Ticket.TicketStatus.OPEN))
+                .activeResources(resourceRepository.count())
+                .build();
+    }
 
     /**
      * Get top N resources by booking count

@@ -73,12 +73,7 @@ export default function Layout({ children }: LayoutProps) {
             >
               Contact
             </NavLink>
-            <NavLink
-              to="/maintenance"
-              className={({ isActive }) => navLinkClass(isActive)}
-            >
-              Maintenance
-            </NavLink>
+
             {showFacilities ? (
               <>
                 <NavLink
@@ -172,13 +167,7 @@ export default function Layout({ children }: LayoutProps) {
             >
               Contact
             </NavLink>
-            <NavLink
-              to="/maintenance"
-              onClick={closeMobile}
-              className={({ isActive }) => `${navLinkClass(isActive)} px-4 py-3`}
-            >
-              Maintenance
-            </NavLink>
+
             {showFacilities ? (
               <>
                 <NavLink

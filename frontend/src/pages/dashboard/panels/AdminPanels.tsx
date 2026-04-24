@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import { HiOutlineExclamationTriangle, HiOutlineShieldExclamation } from 'react-icons/hi2'
 import { KpiMini, Pill, SectionHeader, panelLg, tilePanel } from '../dashboardUi'
+import { useState, useEffect } from 'react'
+import { analyticsService, type AdminStats } from '../../../services/analyticsService'
 import AdminNotificationPanel from '../../../components/AdminNotificationPanel'
 
 const attention = [
@@ -16,32 +18,53 @@ const recent = [
 ]
 
 export default function AdminPanels() {
+  const [stats, setStats] = useState<AdminStats | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const data = await analyticsService.getAdminStats()
+        setStats(data)
+      } catch (error) {
+        console.error('Failed to fetch admin stats:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchStats()
+  }, [])
+
   return (
     <section className="mt-12 space-y-10" aria-label="Admin operations">
       <div>
         <SectionHeader
           eyebrow="Operations"
           title="Campus control centre"
-          subtitle="Overview metrics are illustrative — wire to `/api/admin` and analytics when ready."
+          subtitle="Real-time operational metrics for campus management."
         />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <KpiMini label="Registered users" value="248" hint="+6 this week" />
+          <KpiMini 
+            label="Registered users" 
+            value={loading ? '...' : stats?.totalUsers.toString() || '0'} 
+            hint="+6 this week" 
+          />
           <KpiMini
             label="Pending bookings"
-            value="12"
+            value={loading ? '...' : stats?.pendingBookings.toString() || '0'}
             hint="Oldest 4 days"
             accent="from-amber-500/40 to-transparent"
           />
           <KpiMini
             label="Open tickets"
-            value="19"
-            hint="5 unassigned"
+            value={loading ? '...' : stats?.openTickets.toString() || '0'}
+            hint="Active issues"
             accent="from-violet-500/40 to-transparent"
           />
           <KpiMini
             label="Resources active"
-            value="42"
-            hint="2 in maintenance"
+            value={loading ? '...' : stats?.activeResources.toString() || '0'}
+            hint="Across campus"
             accent="from-emerald-500/40 to-transparent"
           />
         </div>
