@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'react-hot-toast'
+import { toast } from '../services/toast'
 import {
   HiOutlineWrenchScrewdriver as WrenchIcon,
   HiOutlinePhoto as PhotoIcon,

@@ -7,7 +7,7 @@ type PageShellProps = {
 /** Inner pages canvas — same midnight palette as marketing hero (#020617). */
 export default function PageShell({ children }: PageShellProps) {
   return (
-    <div className="relative min-h-[calc(100vh-8rem)] overflow-hidden bg-brand-navy">
+    <div className="relative min-h-[calc(100vh-8rem)] overflow-hidden bg-[var(--color-bg-canvas)]">
       <div
         className="pointer-events-none absolute -left-32 top-0 h-96 w-96 rounded-full bg-[#3B82F6]/15 blur-[120px]"
         aria-hidden

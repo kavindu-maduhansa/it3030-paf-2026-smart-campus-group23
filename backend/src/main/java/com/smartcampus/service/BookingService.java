@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Booking Service
@@ -139,6 +140,36 @@ public class BookingService {
                 ORDER BY b.booking_date DESC, b.start_time DESC
                 """;
         return jdbcTemplate.query(sql, (rs, rowNum) -> BookingListItemDTO.fromJoinedRow(rs));
+    }
+
+    @Transactional(readOnly = true)
+    public List<BookingListItemDTO> listAllBookingsFiltered(
+            String status,
+            LocalDate startDate,
+            LocalDate endDate,
+            Long resourceId,
+            Long userId) {
+        if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException("startDate cannot be after endDate");
+        }
+
+        String normalizedStatus = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
+
+        return listAllBookings().stream()
+                .filter(item -> normalizedStatus.isEmpty()
+                        || (item.getStatus() != null
+                        && item.getStatus().trim().toUpperCase(Locale.ROOT).equals(normalizedStatus)))
+                .filter(item -> resourceId == null || resourceId.equals(item.getResourceId()))
+                .filter(item -> userId == null || userId.equals(item.getUserId()))
+                .filter(item -> {
+                    if (startDate == null && endDate == null) return true;
+                    if (item.getBookingDate() == null || item.getBookingDate().isBlank()) return false;
+                    LocalDate bookingDate = LocalDate.parse(item.getBookingDate());
+                    boolean afterStart = startDate == null || !bookingDate.isBefore(startDate);
+                    boolean beforeEnd = endDate == null || !bookingDate.isAfter(endDate);
+                    return afterStart && beforeEnd;
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)

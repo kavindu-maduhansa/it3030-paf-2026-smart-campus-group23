@@ -47,23 +47,23 @@ export default function ResourceFilter({ onFilter, onReset }: ResourceFilterProp
   const hasActiveFilters = type || location || status || capacity
 
   return (
-    <form onSubmit={handleFilter} className="mb-6 rounded-2xl border border-[#1F2937] bg-[#111827] p-5 shadow-lg shadow-black/30">
+    <form onSubmit={handleFilter} className="ui-panel mb-6 p-5">
       <div className="flex flex-col gap-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-[#94A3B8]">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
           Filter Resources
         </h3>
         
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* Type Dropdown */}
           <div className="flex flex-col gap-2">
-            <label htmlFor="type" className="text-xs font-medium text-[#CBD5E1]">
+            <label htmlFor="type" className="text-xs font-medium text-[var(--color-text-secondary)]">
               Type
             </label>
             <select
               id="type"
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-2 text-sm text-[#E2E8F0] transition-colors focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30"
+              className="ui-input px-3 py-2 text-sm"
             >
               <option value="">All Types</option>
               {RESOURCE_TYPES.map((t) => (
@@ -76,7 +76,7 @@ export default function ResourceFilter({ onFilter, onReset }: ResourceFilterProp
 
           {/* Location Input */}
           <div className="flex flex-col gap-2">
-            <label htmlFor="location" className="text-xs font-medium text-[#CBD5E1]">
+            <label htmlFor="location" className="text-xs font-medium text-[var(--color-text-secondary)]">
               Location
             </label>
             <input
@@ -85,20 +85,20 @@ export default function ResourceFilter({ onFilter, onReset }: ResourceFilterProp
               placeholder="e.g., A, B, Building 3"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              className="rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-2 text-sm text-[#E2E8F0] placeholder-[#64748B] transition-colors focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30"
+              className="ui-input px-3 py-2 text-sm"
             />
           </div>
 
           {/* Status Dropdown */}
           <div className="flex flex-col gap-2">
-            <label htmlFor="status" className="text-xs font-medium text-[#CBD5E1]">
+            <label htmlFor="status" className="text-xs font-medium text-[var(--color-text-secondary)]">
               Status
             </label>
             <select
               id="status"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-2 text-sm text-[#E2E8F0] transition-colors focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30"
+              className="ui-input px-3 py-2 text-sm"
             >
               <option value="">All Statuses</option>
               <option value="ACTIVE">Active</option>
@@ -108,7 +108,7 @@ export default function ResourceFilter({ onFilter, onReset }: ResourceFilterProp
 
           {/* Minimum Capacity */}
           <div className="flex flex-col gap-2">
-            <label htmlFor="capacity" className="text-xs font-medium text-[#CBD5E1]">
+            <label htmlFor="capacity" className="text-xs font-medium text-[var(--color-text-secondary)]">
               Min Capacity
             </label>
             <input
@@ -118,7 +118,7 @@ export default function ResourceFilter({ onFilter, onReset }: ResourceFilterProp
               placeholder="e.g., 30"
               value={capacity}
               onChange={(e) => setCapacity(e.target.value)}
-              className="rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-2 text-sm text-[#E2E8F0] placeholder-[#64748B] transition-colors focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30"
+              className="ui-input px-3 py-2 text-sm"
             />
           </div>
         </div>
@@ -127,7 +127,7 @@ export default function ResourceFilter({ onFilter, onReset }: ResourceFilterProp
         <div className="flex gap-3">
           <button
             type="submit"
-            className="rounded-lg bg-[#3B82F6] px-5 py-2 text-sm font-medium text-white shadow-[0_0_24px_rgba(59,130,246,0.4)] transition-all hover:bg-blue-500 hover:shadow-[0_0_28px_rgba(59,130,246,0.5)]"
+            className="ui-button-primary px-5 py-2 text-sm font-medium"
           >
             Filter
           </button>
@@ -135,7 +135,7 @@ export default function ResourceFilter({ onFilter, onReset }: ResourceFilterProp
             <button
               type="button"
               onClick={handleReset}
-              className="rounded-lg border border-[#334155] px-5 py-2 text-sm font-medium text-[#94A3B8] transition-colors hover:border-[#475569] hover:text-[#CBD5E1]"
+              className="ui-button-secondary px-5 py-2 text-sm font-medium"
             >
               Reset
             </button>

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AxiosError } from 'axios'
 import { Link } from 'react-router-dom'
 import { HiOutlineCalendarDays, HiOutlineFunnel } from 'react-icons/hi2'
-import { Pill, SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
+import { Pill, panelLg, tilePanel } from './dashboard/dashboardUi'
 import {
   approveBooking,
   cancelBooking,
@@ -10,10 +10,12 @@ import {
   getAllBookings,
   getMyBookings,
   rejectBooking,
+  type BookingAdminFilters,
   type BookingResponse,
   updateBooking,
 } from '../services/bookingService'
 import { useAuth } from '../services/useAuth'
+import PageHeader from '../components/PageHeader'
 
 type AdminStatusFilter = 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
 type EditBookingFormState = {
@@ -30,6 +32,10 @@ export default function BookingsPage() {
   const canShowUserQr = user?.role === 'STUDENT' || user?.role === 'LECTURER'
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming')
   const [adminFilter, setAdminFilter] = useState<AdminStatusFilter>('ALL')
+  const [adminDateFrom, setAdminDateFrom] = useState('')
+  const [adminDateTo, setAdminDateTo] = useState('')
+  const [adminResourceId, setAdminResourceId] = useState('')
+  const [adminUserId, setAdminUserId] = useState('')
   const [rows, setRows] = useState<BookingResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -76,10 +82,7 @@ export default function BookingsPage() {
   const rejectedCount = rows.filter((u) => u.status === 'REJECTED').length
   const cancelledCount = rows.filter((u) => u.status === 'CANCELLED').length
 
-  const visibleRows = useMemo(() => {
-    if (!isAdmin || adminFilter === 'ALL') return currentRows
-    return currentRows.filter((row) => row.status === adminFilter)
-  }, [adminFilter, currentRows, isAdmin])
+  const visibleRows = useMemo(() => currentRows, [currentRows])
 
   const formatWhen = (row: BookingResponse) => {
     const start = String(row.startTime ?? '').slice(0, 5)
@@ -94,18 +97,38 @@ export default function BookingsPage() {
     return `${dateText} · ${start}–${end}`
   }
 
-  const mapStatus = (status: string): { label: string; variant: 'success' | 'warning' | 'default' } => {
+  const mapStatus = (status: string): { label: string; variant: 'success' | 'warning' | 'danger' | 'default' } => {
     if (status === 'APPROVED') return { label: 'Confirmed', variant: 'success' }
     if (status === 'PENDING') return { label: 'Pending', variant: 'warning' }
-    if (status === 'REJECTED') return { label: 'Rejected', variant: 'default' }
+    if (status === 'REJECTED') return { label: 'Rejected', variant: 'danger' }
     if (status === 'CANCELLED') return { label: 'Cancelled', variant: 'default' }
     return { label: 'Completed', variant: 'default' }
   }
 
-  const loadBookings = async () => {
+  const buildAdminFilters = (): BookingAdminFilters => {
+    const filters: BookingAdminFilters = {}
+    if (adminFilter !== 'ALL') filters.status = adminFilter
+    if (adminDateFrom) filters.startDate = adminDateFrom
+    if (adminDateTo) filters.endDate = adminDateTo
+    if (adminResourceId.trim() !== '') {
+      const parsedResourceId = Number(adminResourceId)
+      if (Number.isFinite(parsedResourceId) && parsedResourceId > 0) {
+        filters.resourceId = parsedResourceId
+      }
+    }
+    if (adminUserId.trim() !== '') {
+      const parsedUserId = Number(adminUserId)
+      if (Number.isFinite(parsedUserId) && parsedUserId > 0) {
+        filters.userId = parsedUserId
+      }
+    }
+    return filters
+  }
+
+  const loadBookings = useCallback(async () => {
     try {
       setLoading(true)
-      const response = isAdmin ? await getAllBookings() : await getMyBookings()
+      const response = isAdmin ? await getAllBookings(buildAdminFilters()) : await getMyBookings()
       setRows(Array.isArray(response.data) ? response.data : [])
       setError(null)
     } catch (err: unknown) {
@@ -126,7 +149,7 @@ export default function BookingsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [isAdmin, adminFilter, adminDateFrom, adminDateTo, adminResourceId, adminUserId])
 
   const handleDelete = async (row: BookingResponse) => {
     if (!window.confirm(`Delete booking BK-${row.id}?`)) return
@@ -328,14 +351,14 @@ export default function BookingsPage() {
 
   useEffect(() => {
     void loadBookings()
-  }, [isAdmin])
+  }, [loadBookings])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       void loadBookings()
     }, 10000)
     return () => window.clearInterval(timer)
-  }, [isAdmin, adminFilter, tab])
+  }, [loadBookings, tab])
 
   useEffect(() => {
     if (!successMessage) return
@@ -346,7 +369,7 @@ export default function BookingsPage() {
   return (
     <div className="relative -mx-4 sm:-mx-6 lg:-mx-8">
       <div className="px-4 sm:px-6 lg:px-8">
-        <SectionHeader
+        <PageHeader
           eyebrow="Reservations"
           title="Bookings"
           subtitle={isAdmin ? 'Review and manage booking requests quickly.' : 'Track space and equipment you’ve reserved.'}
@@ -360,7 +383,7 @@ export default function BookingsPage() {
               </Link>
               <Link
                 to="/resources"
-                className="inline-flex items-center gap-2 rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+                className="ui-button-primary inline-flex items-center gap-2 px-4 py-2 text-sm"
               >
                 <HiOutlineCalendarDays className="h-4 w-4" />
                 Browse facilities
@@ -393,7 +416,7 @@ export default function BookingsPage() {
             </div>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-lg border border-[#334155] px-4 py-2 text-sm font-medium text-[#94A3B8] hover:border-[#3B82F6]/40 hover:text-white"
+              className="ui-button-secondary inline-flex items-center gap-2 px-4 py-2 text-sm font-medium"
               disabled
             >
               <HiOutlineFunnel className="h-4 w-4" />
@@ -418,27 +441,88 @@ export default function BookingsPage() {
         </div>
 
         {isAdmin ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {[
-              { value: 'ALL' as const, label: `All (${currentRows.length})` },
-              { value: 'PENDING' as const, label: `Pending (${pendingCount})` },
-              { value: 'APPROVED' as const, label: `Approved (${approvedCount})` },
-              { value: 'REJECTED' as const, label: `Rejected (${rejectedCount})` },
-              { value: 'CANCELLED' as const, label: `Cancelled (${cancelledCount})` },
-            ].map((option) => (
+          <div className="mt-4 space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <label htmlFor="adminDateFrom" className="mb-1 block text-xs font-semibold text-[#94A3B8]">From</label>
+                <input
+                  id="adminDateFrom"
+                  type="date"
+                  value={adminDateFrom}
+                  onChange={(e) => setAdminDateFrom(e.target.value)}
+                  className="ui-input py-2"
+                />
+              </div>
+              <div>
+                <label htmlFor="adminDateTo" className="mb-1 block text-xs font-semibold text-[#94A3B8]">To</label>
+                <input
+                  id="adminDateTo"
+                  type="date"
+                  value={adminDateTo}
+                  onChange={(e) => setAdminDateTo(e.target.value)}
+                  className="ui-input py-2"
+                />
+              </div>
+              <div>
+                <label htmlFor="adminResourceId" className="mb-1 block text-xs font-semibold text-[#94A3B8]">Resource ID</label>
+                <input
+                  id="adminResourceId"
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 12"
+                  value={adminResourceId}
+                  onChange={(e) => setAdminResourceId(e.target.value)}
+                  className="ui-input py-2"
+                />
+              </div>
+              <div>
+                <label htmlFor="adminUserId" className="mb-1 block text-xs font-semibold text-[#94A3B8]">User ID</label>
+                <input
+                  id="adminUserId"
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 7"
+                  value={adminUserId}
+                  onChange={(e) => setAdminUserId(e.target.value)}
+                  className="ui-input py-2"
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'ALL' as const, label: `All (${currentRows.length})` },
+                { value: 'PENDING' as const, label: `Pending (${pendingCount})` },
+                { value: 'APPROVED' as const, label: `Approved (${approvedCount})` },
+                { value: 'REJECTED' as const, label: `Rejected (${rejectedCount})` },
+                { value: 'CANCELLED' as const, label: `Cancelled (${cancelledCount})` },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setAdminFilter(option.value)}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    adminFilter === option.value
+                      ? 'border-[#3B82F6] bg-[#3B82F6]/20 text-[#93C5FD]'
+                      : 'border-[var(--color-border-strong)] text-[var(--color-text-muted)] hover:border-[#3B82F6]/40 hover:text-white'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
               <button
-                key={option.value}
                 type="button"
-                onClick={() => setAdminFilter(option.value)}
-                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  adminFilter === option.value
-                    ? 'border-[#3B82F6] bg-[#3B82F6]/20 text-[#93C5FD]'
-                    : 'border-[#334155] text-[#94A3B8] hover:border-[#3B82F6]/40 hover:text-white'
-                }`}
+                onClick={() => {
+                  setAdminFilter('ALL')
+                  setAdminDateFrom('')
+                  setAdminDateTo('')
+                  setAdminResourceId('')
+                  setAdminUserId('')
+                }}
+                className="ui-button-secondary px-3 py-1.5 text-xs"
               >
-                {option.label}
+                Clear Filters
               </button>
-            ))}
+            </div>
           </div>
         ) : null}
 

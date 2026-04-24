@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { HiOutlineMagnifyingGlass, HiOutlineUserPlus, HiOutlineArrowDownTray } from 'react-icons/hi2'
-import { Pill, SectionHeader, panelLg, tilePanel } from './dashboard/dashboardUi'
+import { Pill, panelLg, tilePanel } from './dashboard/dashboardUi'
 import { apiClient } from '../services/axiosConfig'
 import { useAuth } from '../services/useAuth'
 import EditUserRoleModal from '../components/EditUserRoleModal'
 import DeleteUserModal from '../components/DeleteUserModal'
-import Toast from '../components/Toast'
 import { downloadUserReport } from '../utils/reportGenerator'
+import { toast } from '../services/toast'
+import PageHeader from '../components/PageHeader'
 
 interface User {
   id: number
@@ -34,7 +35,6 @@ export default function AdminUsersPage() {
   const [q, setQ] = useState('')
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [deletingUser, setDeletingUser] = useState<User | null>(null)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   const fetchUsers = useCallback(async () => {
     // Don't attempt to load users if not authenticated
@@ -111,10 +111,7 @@ export default function AdminUsersPage() {
     setDeletingUser(null)
 
     // Show success toast
-    setToast({
-      message: `${userName} has been successfully deleted from the system.`,
-      type: 'success',
-    })
+    toast.success(`${userName} has been successfully deleted from the system.`)
   }
 
   const filtered = users.filter(
@@ -138,7 +135,7 @@ export default function AdminUsersPage() {
   return (
     <div className="relative -mx-4 sm:-mx-6 lg:-mx-8">
       <div className="px-4 sm:px-6 lg:px-8">
-        <SectionHeader
+        <PageHeader
           eyebrow="Administration"
           title="User management"
           subtitle="Search and review all campus accounts"
@@ -279,14 +276,6 @@ export default function AdminUsersPage() {
         onSuccess={handleDeleteSuccess}
       />
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-          duration={4000}
-        />
-      )}
     </div>
   )
 }
