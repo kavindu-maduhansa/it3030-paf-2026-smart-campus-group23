@@ -70,7 +70,7 @@ export const loginWithGoogle = () => {
 export const logout = async () => {
   try {
     await apiClient.post(`${API_URL}/logout`, {})
-    window.location.href = '/logout'
+    window.location.href = '/login'
   } catch (error) {
     console.error('Logout failed:', error)
     // Force logout anyway

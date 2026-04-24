@@ -17,10 +17,11 @@ import {
   HiOutlineExclamationTriangle,
   HiOutlineSquares2X2,
 } from 'react-icons/hi2'
-import { DashboardDecor, Pill, SectionHeader, panelLg, tilePanel, featureCard, iconBase } from './dashboard/dashboardUi'
+import { DashboardDecor, Pill, panelLg, tilePanel, featureCard, iconBase } from './dashboard/dashboardUi'
 import { useAuth } from '../services/useAuth'
 import {
   getAssignedTickets,
+  getAllTickets,
   updateTicket,
   updateTicketStatus,
   deleteTicket,
@@ -76,9 +77,9 @@ export default function TechnicianDashboardPage() {
     const end = new Date(t.resolvedAt!).getTime();
     return (end - start) <= (t.slaLimit! * 60 * 60 * 1000);
   }).length;
-  
-  const complianceRate = resolvedTickets.length > 0 
-    ? Math.round((metSlaCount / resolvedTickets.length) * 100) 
+
+  const complianceRate = resolvedTickets.length > 0
+    ? Math.round((metSlaCount / resolvedTickets.length) * 100)
     : 100;
 
   useEffect(() => {
@@ -90,8 +91,8 @@ export default function TechnicianDashboardPage() {
     try {
       // If admin, fetch all tickets for global SLA analytics
       // If technician, fetch only assigned tickets
-      const response = isAdmin ? await getAllTickets() : await getAssignedTickets()
-      setTickets(response.data)
+      const { data } = isAdmin ? await getAllTickets() : await getAssignedTickets()
+      setTickets(data)
     } catch (error) {
       console.error('Failed to fetch tickets:', error)
     } finally {
@@ -101,8 +102,8 @@ export default function TechnicianDashboardPage() {
 
   const fetchAlerts = async () => {
     try {
-      const response = await getAllAlerts()
-      setAlerts(response.data)
+      const { data } = await getAllAlerts()
+      setAlerts(data)
     } catch (error) {
       console.error('Failed to fetch alerts:', error)
     }

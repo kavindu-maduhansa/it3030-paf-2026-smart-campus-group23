@@ -55,6 +55,7 @@ export default function MaintenancePage() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL')
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
+  const [assignmentFilter, setAssignmentFilter] = useState<string>('ALL')
 
   const [activeModal, setActiveModal] = useState<'view' | 'edit' | 'delete' | 'assign' | 'alert' | 'reject' | 'confirm' | null>(null)
   const [selectedTicket, setSelectedTicket] = useState<TicketResponseDTO | null>(null)
@@ -95,7 +96,7 @@ export default function MaintenancePage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, statusFilter, priorityFilter, categoryFilter])
+  }, [searchTerm, statusFilter, priorityFilter, categoryFilter, assignmentFilter, searchParams])
 
   useEffect(() => {
     // We no longer use the filter search param here to avoid getting stuck in a partial view
@@ -113,7 +114,18 @@ export default function MaintenancePage() {
     }
   }
 
-  const list = tickets.filter((t) => {
+  const isMineFilter = searchParams.get('filter') === 'mine'
+
+  // Base visibility filter:
+  // Admins see everything.
+  // Technicians see unassigned tickets or their own assigned tickets.
+  // If 'mine' filter is active, only show user's assigned tickets.
+  const visibleTickets = tickets.filter(t => {
+    if (isMineFilter) return t.assignedToId === user?.id
+    return isAdmin || !t.assignedToId || t.assignedToId === user?.id
+  })
+
+  const list = visibleTickets.filter((t) => {
     const search = searchTerm.toLowerCase().trim()
     const idSearch = search.startsWith('tk-') ? search.replace('tk-', '') : search
 
@@ -127,10 +139,10 @@ export default function MaintenancePage() {
     const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter
     const matchesPriority = priorityFilter === 'ALL' || t.priority === priorityFilter
     const matchesCategory = categoryFilter === 'ALL' || t.category === categoryFilter
+    const matchesAssignment = assignmentFilter === 'ALL' || 
+      (assignmentFilter === 'ASSIGNED' ? !!t.assignedToId : !t.assignedToId)
 
-    let matchesQueue = true
-
-    return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesQueue
+    return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesAssignment
   })
 
   // Pagination Logic
@@ -392,6 +404,22 @@ export default function MaintenancePage() {
                   ))}
                 </select>
               </div>
+
+              {/* Assignment Filter (Admin Only) */}
+              {isAdmin && (
+                <div className="flex items-center gap-2 rounded-xl border border-[#1F2937] bg-[#111827] px-3 py-2">
+                  <span className="text-[10px] font-bold uppercase text-[#475569]">Assignment</span>
+                  <select
+                    value={assignmentFilter}
+                    onChange={(e) => setAssignmentFilter(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
+                  >
+                    <option value="ALL" className="bg-[#0F172A] text-white">All</option>
+                    <option value="ASSIGNED" className="bg-[#0F172A] text-white">Assigned</option>
+                    <option value="UNASSIGNED" className="bg-[#0F172A] text-white">Unassigned</option>
+                  </select>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -399,30 +427,30 @@ export default function MaintenancePage() {
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <div className={tilePanel}>
             <p className="text-xs font-semibold uppercase text-[#94A3B8]">Total Tickets</p>
-            <p className="mt-2 text-2xl font-bold text-white">{tickets.length}</p>
+            <p className="mt-2 text-2xl font-bold text-white">{visibleTickets.length}</p>
           </div>
           <div className={tilePanel}>
             <p className="text-xs font-semibold uppercase text-[#94A3B8]">Open</p>
             <p className="mt-2 text-2xl font-bold text-orange-400">
-              {tickets.filter(t => t.status === 'OPEN').length}
+              {visibleTickets.filter(t => t.status === 'OPEN').length}
             </p>
           </div>
           <div className={tilePanel}>
             <p className="text-xs font-semibold uppercase text-[#94A3B8]">In Progress</p>
             <p className="mt-2 text-2xl font-bold text-blue-400">
-              {tickets.filter(t => t.status === 'IN_PROGRESS').length}
+              {visibleTickets.filter(t => t.status === 'IN_PROGRESS').length}
             </p>
           </div>
           <div className={tilePanel}>
             <p className="text-xs font-semibold uppercase text-[#94A3B8]">Resolved</p>
             <p className="mt-2 text-2xl font-bold text-emerald-400">
-              {tickets.filter(t => t.status === 'RESOLVED' || t.status === 'CLOSED').length}
+              {visibleTickets.filter(t => t.status === 'RESOLVED' || t.status === 'CLOSED').length}
             </p>
           </div>
           <div className={tilePanel}>
             <p className="text-xs font-semibold uppercase text-[#94A3B8]">SLA Breached</p>
             <p className="mt-2 text-2xl font-bold text-rose-500">
-              {tickets.filter(t => {
+              {visibleTickets.filter(t => {
                 if (!t.slaLimit) return false
                 const start = new Date(t.createdAt).getTime()
                 const end = t.resolvedAt ? new Date(t.resolvedAt).getTime() : Date.now()
@@ -457,13 +485,16 @@ export default function MaintenancePage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-3">
                         <p className="font-mono text-xs text-[#64748B]">TK-{t.id}</p>
-                        <p className={`text-[10px] font-bold uppercase tracking-wider ${t.status === 'OPEN' ? 'text-blue-400' :
-                            t.status === 'IN_PROGRESS' ? 'text-amber-400' :
-                              t.status === 'RESOLVED' ? 'text-emerald-400' : 
-                                t.status === 'REJECTED' ? 'text-red-400' : 'text-slate-400'
-                          }`}>
-                          {t.status.replace('_', ' ')}
-                        </p>
+                        {/* Only show status text if it's not RESOLVED or if SLA indicator is missing, to avoid redundancy */}
+                        {(t.status !== 'RESOLVED' || !t.slaLimit) && (
+                          <p className={`text-[10px] font-bold uppercase tracking-wider ${t.status === 'OPEN' ? 'text-blue-400' :
+                              t.status === 'IN_PROGRESS' ? 'text-amber-400' :
+                                t.status === 'RESOLVED' ? 'text-emerald-400' : 
+                                  t.status === 'REJECTED' ? 'text-red-400' : 'text-slate-400'
+                            }`}>
+                            {t.status.replace('_', ' ')}
+                          </p>
+                        )}
                         {t.slaLimit && (
                           <SlaIndicator 
                             createdAt={t.createdAt} 
