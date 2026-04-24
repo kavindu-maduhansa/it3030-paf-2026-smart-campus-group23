@@ -21,7 +21,7 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
 
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public Notification createNotification(User admin, String title, String description, 
                                           Notification.NotificationType type, 
                                           Notification.NotificationSeverity severity) {

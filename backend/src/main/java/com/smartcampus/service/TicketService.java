@@ -62,12 +62,22 @@ public class TicketService {
             log.info("Technician/Admin {} reporting on behalf of user {}", user.getEmail(), ticketOwner.getEmail());
         }
 
+        // Safe enum mapping with fallbacks
+        TicketPriority priority = TicketPriority.LOW;
+        try {
+            if (dto.getPriority() != null) {
+                priority = TicketPriority.valueOf(dto.getPriority().trim().toUpperCase());
+            }
+        } catch (Exception e) {
+            log.warn("Invalid priority provided: {}. Defaulting to LOW.", dto.getPriority());
+        }
+
         Ticket ticket = new Ticket();
         ticket.setTitle(dto.getTitle());
         ticket.setDescription(dto.getDescription());
         ticket.setCategory(dto.getCategory());
         ticket.setContactDetails(dto.getContactDetails());
-        ticket.setPriority(TicketPriority.valueOf(dto.getPriority().toUpperCase()));
+        ticket.setPriority(priority);
         ticket.setStatus(TicketStatus.OPEN);
         ticket.setResource(resource);
         ticket.setUser(ticketOwner);
@@ -76,29 +86,61 @@ public class TicketService {
             ticket.setLocation(resource.getLocation());
         }
 
-        Ticket savedTicket = ticketRepository.save(ticket);
-        mongoTicketSyncService.upsertTicket(savedTicket);
-
-        // Create notification for all admins
-        notifyAdminsAboutTicket(savedTicket);
-
-        // Day 3: Handle attachments
+        // 1. Save to SQL Database first
+        Ticket savedTicket;
+        try {
+            log.info("Persisting ticket to SQL database...");
+            savedTicket = ticketRepository.save(ticket);
+            ticketRepository.flush(); // Force database constraints check
+            log.info("Ticket persisted successfully with ID: {}", savedTicket.getId());
+        } catch (Exception e) {
+            log.error("Failed to persist ticket to SQL: {}", e.getMessage(), e);
+            throw e;
+        }
+        
+        // 2. Handle attachments
         if (images != null && images.length > 0) {
+            log.info("Processing {} attachments...", images.length);
             for (org.springframework.web.multipart.MultipartFile image : images) {
                 if (image != null && !image.isEmpty()) {
-                    String fileName = fileStorageService.storeFile(image);
-                    
-                    Attachment attachment = new Attachment();
-                    attachment.setTicket(savedTicket);
-                    attachment.setFileName(image.getOriginalFilename());
-                    attachment.setFilePath(fileName);
-                    attachment.setFileType(image.getContentType());
-                    attachment.setFileSize(image.getSize());
-                    
-                    savedTicket.getAttachments().add(attachment);
-                    attachmentRepository.save(attachment);
+                    try {
+                        String fileName = fileStorageService.storeFile(image);
+                        
+                        Attachment attachment = new Attachment();
+                        attachment.setTicket(savedTicket);
+                        String originalName = image.getOriginalFilename();
+                        attachment.setFileName(originalName != null ? originalName : "attachment_" + System.currentTimeMillis());
+                        attachment.setFilePath(fileName);
+                        attachment.setFileType(image.getContentType());
+                        attachment.setFileSize(image.getSize());
+                        
+                        savedTicket.getAttachments().add(attachment);
+                        attachmentRepository.save(attachment);
+                        log.info("Attachment saved: {}", originalName);
+                    } catch (Exception e) {
+                        log.error("Failed to save attachment: {}", e.getMessage(), e);
+                    }
                 }
             }
+            try {
+                attachmentRepository.flush();
+            } catch (Exception e) {
+                log.error("Failed to flush attachments: {}", e.getMessage(), e);
+                throw e;
+            }
+        }
+
+        // 3. Perform secondary operations in try-catch to prevent rolling back the whole ticket
+        try {
+            mongoTicketSyncService.upsertTicket(savedTicket);
+        } catch (Exception e) {
+            log.error("Failed to sync ticket to MongoDB: {}", e.getMessage());
+        }
+
+        try {
+            notifyAdminsAboutTicket(savedTicket);
+        } catch (Exception e) {
+            log.error("Failed to notify admins about new ticket: {}", e.getMessage());
         }
 
         return convertToResponseDTO(savedTicket);

@@ -38,9 +38,14 @@ public class TicketController {
             @AuthenticationPrincipal OAuth2User oauth2User,
             HttpServletRequest request) {
         
-        User currentUser = resolveUser(oauth2User, request);
-        TicketResponseDTO response = ticketService.createTicket(ticketRequestDTO, currentUser, images);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        try {
+            User currentUser = resolveUser(oauth2User, request);
+            TicketResponseDTO response = ticketService.createTicket(ticketRequestDTO, currentUser, images);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (Exception e) {
+            log.error("Error creating ticket in controller: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     @GetMapping
@@ -182,9 +187,14 @@ public class TicketController {
         // Fallback to SessionUser if OAuth2 is not present
         if (email == null) {
             HttpSession session = request.getSession(false);
-            if (session != null && session.getAttribute("user") != null) {
-                SessionUser sessionUser = (SessionUser) session.getAttribute("user");
-                email = sessionUser.getEmail();
+            if (session != null) {
+                Object userObj = session.getAttribute("user");
+                if (userObj instanceof SessionUser) {
+                    email = ((SessionUser) userObj).getEmail();
+                } else if (userObj instanceof User) {
+                    // Handle legacy case where raw User entity might be in session
+                    email = ((User) userObj).getEmail();
+                }
             }
         }
 
