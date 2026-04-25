@@ -10,7 +10,7 @@ export function getApiBaseUrl(): string {
   if (import.meta.env.DEV) {
     return ''
   }
-  return 'http://localhost:8082'
+  return 'http://localhost:8081'
 }
 
 /**
