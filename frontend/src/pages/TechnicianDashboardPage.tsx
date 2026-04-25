@@ -479,7 +479,7 @@ export default function TechnicianDashboardPage() {
       {activeModal && selectedTicket && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={handleCloseModal} />
-          <div className="relative w-full max-w-4xl transform overflow-hidden rounded-[2.5rem] border border-[#334155] bg-[#0F172A] shadow-2xl transition-all">
+          <div className="relative w-full max-w-4xl max-h-[90vh] transform overflow-y-auto rounded-[2.5rem] border border-[#334155] bg-[#0F172A] shadow-2xl transition-all custom-scrollbar">
 
             {activeModal === 'view' && (
               <div className="flex flex-col">

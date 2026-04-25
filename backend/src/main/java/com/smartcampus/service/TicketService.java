@@ -256,9 +256,11 @@ public class TicketService {
             }
         }
 
-        if (status == TicketStatus.CLOSED && currentUser.getRole() != com.smartcampus.security.Role.ADMIN && 
+        if (status == TicketStatus.CLOSED && 
+            currentUser.getRole() != com.smartcampus.security.Role.ADMIN && 
+            currentUser.getRole() != com.smartcampus.security.Role.TECHNICIAN &&
             !ticket.getUser().getId().equals(currentUser.getId())) {
-            throw new org.springframework.security.access.AccessDeniedException("Only admins or the ticket owner can close a ticket");
+            throw new org.springframework.security.access.AccessDeniedException("Only admins, technicians, or the ticket owner can close a ticket");
         }
 
         if (status == TicketStatus.REJECTED && currentUser.getRole() != com.smartcampus.security.Role.ADMIN) {
