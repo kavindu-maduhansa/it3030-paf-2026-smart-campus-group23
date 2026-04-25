@@ -19,14 +19,13 @@ function navLinkClass(isActive: boolean) {
     : `${navLinkBase} text-[var(--color-text-muted)] hover:bg-white/5 hover:text-[var(--color-text-primary)]`
 }
 
-const ROLES_HIDE_FACILITIES_BOOKINGS = new Set(['STUDENT', 'LECTURER', 'TECHNICIAN'])
+const ROLES_HIDE_FACILITIES_BOOKINGS = new Set(['TECHNICIAN'])
 
 export default function Layout({ children }: LayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { isAuthenticated, user } = useAuth()
   const roleUpper = user?.role?.toUpperCase() ?? ''
   const showFacilities = !roleUpper || !ROLES_HIDE_FACILITIES_BOOKINGS.has(roleUpper)
-  const showBookings = showFacilities && roleUpper !== 'ADMIN'
 
   const closeMobile = () => setMobileOpen(false)
 
@@ -61,6 +60,14 @@ export default function Layout({ children }: LayoutProps) {
             <NavLink to="/" end className={({ isActive }) => navLinkClass(isActive)}>
               Home
             </NavLink>
+            {showFacilities ? (
+              <NavLink
+                to="/resources"
+                className={({ isActive }) => navLinkClass(isActive)}
+              >
+                Facilities
+              </NavLink>
+            ) : null}
             <NavLink
               to="/about"
               className={({ isActive }) => navLinkClass(isActive)}
@@ -73,25 +80,6 @@ export default function Layout({ children }: LayoutProps) {
             >
               Contact
             </NavLink>
-
-            {showFacilities ? (
-              <>
-                <NavLink
-                  to="/resources"
-                  className={({ isActive }) => navLinkClass(isActive)}
-                >
-                  Facilities
-                </NavLink>
-              </>
-            ) : null}
-            {showBookings ? (
-              <NavLink
-                to="/bookings"
-                className={({ isActive }) => navLinkClass(isActive)}
-              >
-                Bookings
-              </NavLink>
-            ) : null}
             <NavLink
               to="/dashboard"
               className={({ isActive }) => navLinkClass(isActive)}
@@ -153,6 +141,15 @@ export default function Layout({ children }: LayoutProps) {
             >
               Home
             </NavLink>
+            {showFacilities ? (
+              <NavLink
+                to="/resources"
+                onClick={closeMobile}
+                className={({ isActive }) => `${navLinkClass(isActive)} px-4 py-3`}
+              >
+                Facilities
+              </NavLink>
+            ) : null}
             <NavLink
               to="/about"
               onClick={closeMobile}
@@ -167,27 +164,6 @@ export default function Layout({ children }: LayoutProps) {
             >
               Contact
             </NavLink>
-
-            {showFacilities ? (
-              <>
-                <NavLink
-                  to="/resources"
-                  onClick={closeMobile}
-                  className={({ isActive }) => `${navLinkClass(isActive)} px-4 py-3`}
-                >
-                  Facilities
-                </NavLink>
-              </>
-            ) : null}
-            {showBookings ? (
-              <NavLink
-                to="/bookings"
-                onClick={closeMobile}
-                className={({ isActive }) => `${navLinkClass(isActive)} px-4 py-3`}
-              >
-                Bookings
-              </NavLink>
-            ) : null}
             <NavLink
               to="/dashboard"
               onClick={closeMobile}
