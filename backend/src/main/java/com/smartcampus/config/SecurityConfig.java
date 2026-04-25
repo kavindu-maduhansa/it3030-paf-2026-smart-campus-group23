@@ -75,8 +75,7 @@ public class SecurityConfig {
                 // Admin & Analytics endpoints - ADMIN only
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 
-                // Tickets endpoints - ADMIN or TECHNICIAN (DELETE is restricted to staff)
-                .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/tickets/**").hasAnyRole("ADMIN", "TECHNICIAN")
+                // Tickets endpoints - authenticated users can access; specific ownership/role checks are in the service layer
                 .requestMatchers("/api/tickets/**").authenticated()
                 
                 // Bookings endpoints - STUDENT or LECTURER

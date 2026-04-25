@@ -138,7 +138,7 @@ export const addComment = (ticketId: number, data: CommentRequestDTO) =>
   apiClient.post<CommentResponseDTO>(`${API_URL}/${ticketId}/comments`, data)
 
 export const updateComment = (commentId: number, data: CommentRequestDTO) =>
-  apiClient.put<CommentResponseDTO>(`/api/comments/${commentId}`, data)
+  apiClient.put<CommentResponseDTO>(`${API_URL}/comments/${commentId}`, data)
 
 export const deleteComment = (commentId: number) =>
-  apiClient.delete(`/api/comments/${commentId}`)
+  apiClient.delete(`${API_URL}/comments/${commentId}`)

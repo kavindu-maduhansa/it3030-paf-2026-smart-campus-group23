@@ -5,9 +5,12 @@ import com.smartcampus.dto.TicketRequestDTO;
 import com.smartcampus.dto.TicketResponseDTO;
 import com.smartcampus.entity.User;
 import com.smartcampus.exception.ResourceNotFoundException;
+import com.smartcampus.dto.CommentRequestDTO;
+import com.smartcampus.dto.CommentResponseDTO;
 import com.smartcampus.model.Ticket.TicketPriority;
 import com.smartcampus.model.Ticket.TicketStatus;
 import com.smartcampus.repository.UserRepository;
+import com.smartcampus.service.CommentService;
 import com.smartcampus.service.TicketService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -29,15 +32,16 @@ import java.util.List;
 public class TicketController {
 
     private final TicketService ticketService;
+    private final CommentService commentService;
     private final UserRepository userRepository;
 
-    @PostMapping(consumes = {"multipart/form-data"})
+    @PostMapping(consumes = { "multipart/form-data" })
     public ResponseEntity<TicketResponseDTO> createTicket(
             @Valid @RequestPart("ticket") TicketRequestDTO ticketRequestDTO,
             @RequestPart(value = "images", required = false) org.springframework.web.multipart.MultipartFile[] images,
             @AuthenticationPrincipal OAuth2User oauth2User,
             HttpServletRequest request) {
-        
+
         try {
             User currentUser = resolveUser(oauth2User, request);
             TicketResponseDTO response = ticketService.createTicket(ticketRequestDTO, currentUser, images);
@@ -52,7 +56,7 @@ public class TicketController {
     public ResponseEntity<List<TicketResponseDTO>> getAllTickets(
             @RequestParam(required = false) TicketStatus status,
             @RequestParam(required = false) TicketPriority priority) {
-        
+
         List<TicketResponseDTO> tickets = ticketService.getAllTickets(status, priority);
         return ResponseEntity.ok(tickets);
     }
@@ -61,7 +65,7 @@ public class TicketController {
     public ResponseEntity<List<TicketResponseDTO>> getMyTickets(
             @AuthenticationPrincipal OAuth2User oauth2User,
             HttpServletRequest request) {
-        
+
         User currentUser = resolveUser(oauth2User, request);
         return ResponseEntity.ok(ticketService.getMyTickets(currentUser));
     }
@@ -70,7 +74,7 @@ public class TicketController {
     public ResponseEntity<List<TicketResponseDTO>> getAssignedTickets(
             @AuthenticationPrincipal OAuth2User oauth2User,
             HttpServletRequest request) {
-        
+
         User currentUser = resolveUser(oauth2User, request);
         return ResponseEntity.ok(ticketService.getAssignedTickets(currentUser));
     }
@@ -86,7 +90,7 @@ public class TicketController {
             @RequestParam TicketStatus status,
             @AuthenticationPrincipal OAuth2User oauth2User,
             HttpServletRequest request) {
-        
+
         User currentUser = resolveUser(oauth2User, request);
         TicketResponseDTO response = ticketService.updateTicketStatus(id, status, currentUser);
         return ResponseEntity.ok(response);
@@ -99,7 +103,7 @@ public class TicketController {
             @RequestPart(value = "images", required = false) org.springframework.web.multipart.MultipartFile[] images,
             @AuthenticationPrincipal OAuth2User oauth2User,
             HttpServletRequest request) {
-        
+
         User currentUser = resolveUser(oauth2User, request);
         TicketResponseDTO response = ticketService.updateTicket(id, ticketRequestDTO, currentUser, images);
         return ResponseEntity.ok(response);
@@ -111,7 +115,7 @@ public class TicketController {
             @RequestParam Long technicianId,
             @AuthenticationPrincipal OAuth2User oauth2User,
             HttpServletRequest request) {
-        
+
         User currentUser = resolveUser(oauth2User, request);
         TicketResponseDTO response = ticketService.assignTechnician(id, technicianId, currentUser);
         return ResponseEntity.ok(response);
@@ -122,29 +126,29 @@ public class TicketController {
             @PathVariable Long id,
             @AuthenticationPrincipal OAuth2User oauth2User,
             HttpServletRequest request) {
-        
+
         User currentUser = resolveUser(oauth2User, request);
         TicketResponseDTO response = ticketService.assignTechnician(id, currentUser.getId(), currentUser);
         return ResponseEntity.ok(response);
     }
+
     @PatchMapping("/{id}/unassign")
     public ResponseEntity<TicketResponseDTO> unassignTechnician(
             @PathVariable Long id,
             @AuthenticationPrincipal OAuth2User oauth2User,
             HttpServletRequest request) {
-        
+
         User currentUser = resolveUser(oauth2User, request);
         TicketResponseDTO response = ticketService.unassignTechnician(id, currentUser);
         return ResponseEntity.ok(response);
     }
-
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTicket(
             @PathVariable Long id,
             @AuthenticationPrincipal OAuth2User oauth2User,
             HttpServletRequest request) {
-        
+
         User currentUser = resolveUser(oauth2User, request);
         ticketService.deleteTicket(id, currentUser);
         return ResponseEntity.noContent().build();
@@ -153,7 +157,7 @@ public class TicketController {
     @GetMapping("/images/{filename:.+}")
     public ResponseEntity<org.springframework.core.io.Resource> getTicketImage(@PathVariable String filename) {
         org.springframework.core.io.Resource file = ticketService.loadTicketImage(filename);
-        
+
         String contentType = "application/octet-stream";
         try {
             if (filename.toLowerCase().endsWith(".jpg") || filename.toLowerCase().endsWith(".jpeg")) {
@@ -169,12 +173,53 @@ public class TicketController {
 
         return ResponseEntity.ok()
                 .contentType(org.springframework.http.MediaType.parseMediaType(contentType))
-                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getFilename() + "\"")
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + file.getFilename() + "\"")
                 .body(file);
     }
 
+    // Comment Endpoints
+    @PostMapping("/{id}/comments")
+    public ResponseEntity<CommentResponseDTO> addComment(
+            @PathVariable Long id,
+            @Valid @RequestBody CommentRequestDTO dto,
+            @AuthenticationPrincipal OAuth2User oauth2User,
+            HttpServletRequest request) {
+
+        User currentUser = resolveUser(oauth2User, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(commentService.addComment(id, dto, currentUser));
+    }
+
+    @GetMapping("/{id}/comments")
+    public ResponseEntity<List<CommentResponseDTO>> getComments(@PathVariable Long id) {
+        return ResponseEntity.ok(commentService.getCommentsByTicketId(id));
+    }
+
+    @PutMapping("/comments/{commentId}")
+    public ResponseEntity<CommentResponseDTO> updateComment(
+            @PathVariable Long commentId,
+            @Valid @RequestBody CommentRequestDTO dto,
+            @AuthenticationPrincipal OAuth2User oauth2User,
+            HttpServletRequest request) {
+
+        User currentUser = resolveUser(oauth2User, request);
+        return ResponseEntity.ok(commentService.updateComment(commentId, dto, currentUser));
+    }
+
+    @DeleteMapping("/comments/{commentId}")
+    public ResponseEntity<Void> deleteComment(
+            @PathVariable Long commentId,
+            @AuthenticationPrincipal OAuth2User oauth2User,
+            HttpServletRequest request) {
+
+        User currentUser = resolveUser(oauth2User, request);
+        commentService.deleteComment(commentId, currentUser);
+        return ResponseEntity.noContent().build();
+    }
+
     /**
-     * Resolves the User entity from the current authentication context (OAuth2 or Session)
+     * Resolves the User entity from the current authentication context (OAuth2 or
+     * Session)
      */
     private User resolveUser(OAuth2User oauth2User, HttpServletRequest request) {
         String email = null;

@@ -1,0 +1,8 @@
+# Use this workspace to collaborate
+workspace:
+  id: 09e60554-a338-42de-8203-b561de39b99b
+
+localResources:
+  collections:
+    - ..\backend\OAuth2_API_Tests.postman_collection.json
+    - ..\backend\Smart_Campus_Postman_Collection.json

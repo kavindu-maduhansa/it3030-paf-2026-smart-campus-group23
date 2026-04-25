@@ -24,6 +24,8 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final TicketRepository ticketRepository;
+    private final MongoCommentSyncService mongoCommentSyncService;
+    private final MongoTicketSyncService mongoTicketSyncService;
 
     @Transactional
     public CommentResponseDTO addComment(Long ticketId, CommentRequestDTO dto, User user) {
@@ -55,6 +57,13 @@ public class CommentService {
         }
 
         log.info("New comment added to ticket {} by user {}", ticketId, user.getEmail());
+        
+        // Sync to MongoDB
+        mongoCommentSyncService.upsertComment(savedComment);
+        if (ticket.getFirstReplyAt() != null) {
+            mongoTicketSyncService.upsertTicket(ticket);
+        }
+
         return convertToResponseDTO(savedComment);
     }
 
@@ -79,6 +88,10 @@ public class CommentService {
         comment.setContent(dto.getContent());
         Comment updatedComment = commentRepository.save(comment);
         log.info("Comment {} updated by user {}", commentId, user.getEmail());
+
+        // Sync to MongoDB
+        mongoCommentSyncService.upsertComment(updatedComment);
+
         return convertToResponseDTO(updatedComment);
     }
 
@@ -94,6 +107,9 @@ public class CommentService {
 
         commentRepository.delete(comment);
         log.info("Comment {} deleted by user {}", commentId, user.getEmail());
+
+        // Sync to MongoDB
+        mongoCommentSyncService.deleteComment(commentId);
     }
 
     private CommentResponseDTO convertToResponseDTO(Comment comment) {
